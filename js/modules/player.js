@@ -8,6 +8,7 @@ var Player = class Player {
         this.currentIndex = -1;
         this.isPlaying = false;
         this.ui = null;
+        this.baseVolume = 80; // значение по умолчанию (0-100)
 
         this.initAudioEvents();
     }
@@ -42,12 +43,10 @@ var Player = class Player {
         const file = await this.fileHandler.getFileForTrack(track);
         if (!file) {
             alert(`Не удалось загрузить файл: ${track.name}. Он будет удалён из очереди.`);
-            // Удаляем трек из очереди (находим его индекс)
             const index = this.queue.indexOf(trackId);
             if (index !== -1) {
-                await this.removeFromQueue(index); // удалит и обновит currentIndex
+                await this.removeFromQueue(index);
             }
-            // После удаления пробуем загрузить следующий, если очередь не пуста
             if (this.queue.length > 0) {
                 if (this.currentIndex >= this.queue.length) this.currentIndex = 0;
                 return this.loadTrack(this.queue[this.currentIndex]);
@@ -59,9 +58,27 @@ var Player = class Player {
         const url = URL.createObjectURL(file);
         this.audio.src = url;
         this.audio.load();
+
+        // Применяем громкость с учётом тегов
+        await this.updateEffectiveVolume();
+
         if (this.isPlaying) this.audio.play();
         if (this.ui) this.ui.updateCurrentTrack(track);
         return true;
+    }
+
+    async updateEffectiveVolume() {
+        if (!this.currentTrack) return;
+        const tags = await this.db.getTags(this.currentTrack.id);
+        let factor = 1.0;
+        for (let tag of tags) {
+            const vol = await this.db.getTagVolume(tag);
+            factor *= vol; // перемножаем все коэффициенты
+        }
+        // ограничиваем factor разумными пределами (например, 0.1 – 2.0)
+        factor = Math.min(2.0, Math.max(0.1, factor));
+        const effective = (this.baseVolume / 100) * factor;
+        this.audio.volume = Math.min(1, Math.max(0, effective));
     }
 
     async play() {
@@ -159,12 +176,13 @@ var Player = class Player {
 
     async addRandomFromLibrary() {
         const allTracks = await this.db.getAllTracks();
-        const exclusions = await this.db.getAllExclusions();
-        const now = Date.now();
-        const excludedIds = new Set(
-            exclusions.filter(e => e.until === 0 || e.until > now).map(e => e.id)
-        );
-        const availableTracks = allTracks.filter(t => !excludedIds.has(t.id));
+        const availableTracks = [];
+        for (let track of allTracks) {
+            const tags = await this.db.getTags(track.id);
+            if (!tags.includes('🚫 excluded')) {
+                availableTracks.push(track);
+            }
+        }
         if (availableTracks.length === 0) {
             alert('Нет доступных треков (все исключены)');
             return;
@@ -174,7 +192,13 @@ var Player = class Player {
     }
 
     setVolume(percent) {
-        this.audio.volume = percent / 100;
+        this.baseVolume = Math.min(100, Math.max(0, percent));
+        // Если текущий трек есть, пересчитываем громкость
+        if (this.currentTrack) {
+            this.updateEffectiveVolume();
+        } else {
+            this.audio.volume = this.baseVolume / 100;
+        }
     }
 
     seek(percent) {

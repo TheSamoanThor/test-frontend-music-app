@@ -28,6 +28,51 @@ var ThemeManager = class ThemeManager {
                 '--border-color': '#444',
                 '--player-bg': '#000',
                 '--hover-bg': '#3a3a3a'
+            },
+            'light-blue': {
+                '--bg-color': '#e3f2fd',
+                '--text-color': '#01579b',
+                '--primary-color': '#0288d1',
+                '--secondary-bg': '#ffffff',
+                '--border-color': '#b3e5fc',
+                '--player-bg': '#b3e5fc',
+                '--hover-bg': '#81d4fa'
+            },
+            'dark-purple': {
+                '--bg-color': '#2d1b3c',
+                '--text-color': '#e1bee7',
+                '--primary-color': '#ab47bc',
+                '--secondary-bg': '#3e2a4d',
+                '--border-color': '#5e3a6b',
+                '--player-bg': '#3e2a4d',
+                '--hover-bg': '#6a4e7a'
+            },
+            'green': {
+                '--bg-color': '#e8f5e9',
+                '--text-color': '#1b5e20',
+                '--primary-color': '#2e7d32',
+                '--secondary-bg': '#ffffff',
+                '--border-color': '#a5d6a7',
+                '--player-bg': '#c8e6c9',
+                '--hover-bg': '#a5d6a7'
+            },
+            'orange': {
+                '--bg-color': '#fff3e0',
+                '--text-color': '#bf360c',
+                '--primary-color': '#f57c00',
+                '--secondary-bg': '#ffffff',
+                '--border-color': '#ffe0b2',
+                '--player-bg': '#ffe0b2',
+                '--hover-bg': '#ffcc80'
+            },
+            'monochrome': {
+                '--bg-color': '#fafafa',
+                '--text-color': '#212121',
+                '--primary-color': '#9e9e9e',
+                '--secondary-bg': '#ffffff',
+                '--border-color': '#bdbdbd',
+                '--player-bg': '#eeeeee',
+                '--hover-bg': '#e0e0e0'
             }
         };
         this.currentPreset = 'light';

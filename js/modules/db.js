@@ -1,14 +1,14 @@
 var Database = class Database {
     constructor() {
         this.dbName = 'MusicPlayerDB';
-        this.dbVersion = 1;
+        this.dbVersion = 2; // увеличена версия для нового хранилища
         this.db = null;
         this.stores = {
             tracks: 'tracks',
             queue: 'queue',
-            exclusions: 'exclusions',
             settings: 'settings',
-            tags: 'tags'
+            tags: 'tags',
+            tagVolumes: 'tagVolumes' // новое хранилище для громкости по тегам
         };
     }
 
@@ -22,21 +22,32 @@ var Database = class Database {
             };
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                // Создаём хранилища, если их нет
+                const oldVersion = event.oldVersion;
+
+                // Создаём хранилища, если их нет (версия 1)
                 if (!db.objectStoreNames.contains(this.stores.tracks)) {
                     db.createObjectStore(this.stores.tracks, { keyPath: 'id' });
                 }
                 if (!db.objectStoreNames.contains(this.stores.queue)) {
                     db.createObjectStore(this.stores.queue, { keyPath: 'key' });
                 }
-                if (!db.objectStoreNames.contains(this.stores.exclusions)) {
-                    db.createObjectStore(this.stores.exclusions, { keyPath: 'id' });
-                }
                 if (!db.objectStoreNames.contains(this.stores.settings)) {
                     db.createObjectStore(this.stores.settings, { keyPath: 'key' });
                 }
                 if (!db.objectStoreNames.contains(this.stores.tags)) {
                     db.createObjectStore(this.stores.tags, { keyPath: 'trackId' });
+                }
+
+                // При переходе с версии 1 на 2
+                if (oldVersion < 2) {
+                    // Удаляем устаревшее хранилище exclusions
+                    if (db.objectStoreNames.contains('exclusions')) {
+                        db.deleteObjectStore('exclusions');
+                    }
+                    // Создаём хранилище для громкости тегов
+                    if (!db.objectStoreNames.contains(this.stores.tagVolumes)) {
+                        db.createObjectStore(this.stores.tagVolumes, { keyPath: 'tag' });
+                    }
                 }
             };
         });
@@ -125,50 +136,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Исключения (ключ - id трека) ----
-    async getExclusion(trackId) {
-        const tx = this.db.transaction(this.stores.exclusions, 'readonly');
-        const store = tx.objectStore(this.stores.exclusions);
-        return new Promise((resolve, reject) => {
-            const request = store.get(trackId);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result ? request.result.value : null);
-        });
-    }
-
-    async setExclusion(trackId, exclusion) {
-        const tx = this.db.transaction(this.stores.exclusions, 'readwrite');
-        const store = tx.objectStore(this.stores.exclusions);
-        return new Promise((resolve, reject) => {
-            const request = store.put({ id: trackId, value: exclusion });
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve();
-        });
-    }
-
-    async removeExclusion(trackId) {
-        const tx = this.db.transaction(this.stores.exclusions, 'readwrite');
-        const store = tx.objectStore(this.stores.exclusions);
-        return new Promise((resolve, reject) => {
-            const request = store.delete(trackId);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve();
-        });
-    }
-
-    async getAllExclusions() {
-        const tx = this.db.transaction(this.stores.exclusions, 'readonly');
-        const store = tx.objectStore(this.stores.exclusions);
-        return new Promise((resolve, reject) => {
-            const request = store.getAll();
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                const exclusions = request.result.map(item => ({ id: item.id, ...item.value }));
-                resolve(exclusions);
-            };
-        });
-    }
-
     // ---- Настройки (ключ - произвольная строка) ----
     async getSetting(key) {
         const tx = this.db.transaction(this.stores.settings, 'readonly');
@@ -190,9 +157,50 @@ var Database = class Database {
         });
     }
 
+    // ---- Громкость для тегов (новое) ----
+    async getTagVolume(tag) {
+        const tx = this.db.transaction(this.stores.tagVolumes, 'readonly');
+        const store = tx.objectStore(this.stores.tagVolumes);
+        return new Promise((resolve, reject) => {
+            const request = store.get(tag);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result ? request.result.volume : 1.0);
+        });
+    }
+
+    async setTagVolume(tag, volume) {
+        const tx = this.db.transaction(this.stores.tagVolumes, 'readwrite');
+        const store = tx.objectStore(this.stores.tagVolumes);
+        return new Promise((resolve, reject) => {
+            const request = store.put({ tag, volume });
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    }
+
+    async getAllTagVolumes() {
+        const tx = this.db.transaction(this.stores.tagVolumes, 'readonly');
+        const store = tx.objectStore(this.stores.tagVolumes);
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+        });
+    }
+
+    async deleteTagVolume(tag) {
+        const tx = this.db.transaction(this.stores.tagVolumes, 'readwrite');
+        const store = tx.objectStore(this.stores.tagVolumes);
+        return new Promise((resolve, reject) => {
+            const request = store.delete(tag);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    }
+
     // ---- Экспорт / Импорт всех данных ----
     async exportData() {
-        const stores = [this.stores.tracks, this.stores.queue, this.stores.exclusions, this.stores.settings, this.stores.tags];
+        const stores = [this.stores.tracks, this.stores.queue, this.stores.settings, this.stores.tags, this.stores.tagVolumes];
         const data = {};
         for (let storeName of stores) {
             const tx = this.db.transaction(storeName, 'readonly');
@@ -206,7 +214,7 @@ var Database = class Database {
             // Для хранилища tracks удаляем поля handle и file (они не сериализуются)
             if (storeName === this.stores.tracks) {
                 data[storeName] = records.map(track => {
-                    const { handle, file, ...rest } = track; // удаляем несериализуемые поля
+                    const { handle, file, ...rest } = track;
                     return rest;
                 });
             } else {
@@ -222,7 +230,7 @@ var Database = class Database {
             alert('Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.');
         }
         for (let storeName in data) {
-            if (!data[storeName]) continue;
+            if (!data[storeName] || storeName === 'exclusions') continue; // пропускаем устаревшее хранилище
             const tx = this.db.transaction(storeName, 'readwrite');
             const store = tx.objectStore(storeName);
             await new Promise((resolve, reject) => {
