@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player с тегами и очередью</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="toolbar">
+                <button id="select-music-btn">📂 Выбрать папку с музыкой</button>
+                <button id="import-btn">📥 Импорт</button>
+                <button id="export-btn">📤 Экспорт</button>
+                <select id="theme-select">
+                    <option value="light">☀️ Светлая</option>
+                    <option value="dark">🌙 Тёмная</option>
+                    <option value="dark2">🌙 Тёмная2</option>
+                    <option value="custom">🎨 Пользовательская</option>
+                </select>
+                <input type="color" id="custom-color" value="#4a90e2" title="Основной цвет">
+            </div>
+        </header>
+
+        <main>
+            <!-- Библиотека -->
+            <section class="library-panel">
+                <h2>📚 Библиотека</h2>
+                <div class="filter-bar">
+                    <input type="text" id="tag-filter" placeholder="Фильтр по тегам (рок, поп, ...)">
+                    <button id="apply-filter">🔍 Применить</button>
+                </div>
+                <ul id="track-list" class="track-list"></ul>
+            </section>
+
+            <!-- Очередь -->
+            <section class="queue-panel">
+                <h2>⏯️ Очередь</h2>
+                <div class="queue-controls">
+                    <button id="shuffle-queue">🔀 Перемешать</button>
+                    <button id="clear-queue">🗑️ Очистить</button>
+                    <button id="add-random">🎲 Добавить случайную</button>
+                </div>
+                <ul id="queue-list" class="queue-list"></ul>
+            </section>
+        </main>
+
+        <!-- Плеер -->
+        <footer class="player-bar">
+            <div class="player-info">
+                <span id="current-track-name">🎵 Не выбрано</span>
+            </div>
+            <div class="player-controls">
+                <button id="play-pause">▶️</button>
+                <button id="prev">⏮️</button>
+                <button id="next">⏭️</button>
+                <input type="range" id="progress" value="0" min="0" max="100" step="0.1">
+                <input type="range" id="volume" value="80" min="0" max="100">
+            </div>
+        </footer>
+    </div>
+
+    <!-- Подключение скриптов (без внешних библиотек) -->
+    <script src="js/modules/utils.js"></script>
+    <script src="js/modules/db.js"></script>
+    <script src="js/modules/fileHandler.js"></script>
+    <script src="js/modules/player.js"></script>
+    <script src="js/modules/themes.js"></script>
+    <script src="js/modules/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

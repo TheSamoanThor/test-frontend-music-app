@@ -1,0 +1,278 @@
+:root {
+    --bg-color: #f8f9fa;
+    --text-color: #212529;
+    --primary-color: #4a90e2;
+    --secondary-bg: #ffffff;
+    --border-color: #dee2e6;
+    --player-bg: #e9ecef;
+    --hover-bg: #e0e0e0;
+    --font-family: 'Segoe UI', system-ui, sans-serif;
+    --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --border-radius: 8px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+header {
+    background-color: var(--secondary-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 1.5rem;
+    box-shadow: var(--shadow);
+    z-index: 10;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.toolbar button, .toolbar select, .toolbar input[type="color"] {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.toolbar button:hover {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.toolbar input[type="color"] {
+    width: 50px;
+    padding: 0.3rem;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    padding: 1rem;
+    gap: 1rem;
+}
+
+.library-panel, .queue-panel {
+    background-color: var(--secondary-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.library-panel {
+    flex: 2;
+}
+
+.queue-panel {
+    flex: 1;
+}
+
+h2 {
+    font-size: 1.2rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--secondary-bg);
+}
+
+.filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.filter-bar input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.filter-bar button {
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.track-list, .queue-list {
+    list-style: none;
+    overflow-y: auto;
+    flex: 1;
+    padding: 0.5rem;
+}
+
+.track-item, .queue-item {
+    background-color: var(--bg-color);
+    border-radius: var(--border-radius);
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+    transition: transform 0.1s;
+}
+
+.track-item:hover, .queue-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.track-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.track-tags {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+}
+
+.track-item input.tag-input {
+    padding: 0.3rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+}
+
+.track-item button, .queue-item button {
+    padding: 0.3rem 0.6rem;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    margin-right: 0.3rem;
+    font-size: 0.8rem;
+}
+
+.track-item button:last-child, .queue-item button:last-child {
+    margin-right: 0;
+}
+
+.queue-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.queue-item span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.queue-controls {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 10px;
+    justify-content: center;
+}
+
+.queue-controls button{
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.player-bar {
+    background-color: var(--player-bg);
+    border-top: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+}
+
+.player-info {
+    font-weight: 500;
+    min-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.player-controls button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-color);
+    padding: 0.3rem;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.player-controls button:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.player-controls input[type="range"] {
+    width: 150px;
+}
+
+@media (max-width: 768px) {
+    main {
+        flex-direction: column;
+    }
+    .player-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .player-controls {
+        justify-content: center;
+    }
+}
