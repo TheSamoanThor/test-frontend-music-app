@@ -38,11 +38,23 @@ var Player = class Player {
     async loadTrack(trackId) {
         const track = await this.db.getTrack(trackId);
         if (!track) return false;
+
         const file = await this.fileHandler.getFileForTrack(track);
         if (!file) {
-            alert(`Не удалось загрузить файл: ${track.name}`);
+            alert(`Не удалось загрузить файл: ${track.name}. Он будет удалён из очереди.`);
+            // Удаляем трек из очереди (находим его индекс)
+            const index = this.queue.indexOf(trackId);
+            if (index !== -1) {
+                await this.removeFromQueue(index); // удалит и обновит currentIndex
+            }
+            // После удаления пробуем загрузить следующий, если очередь не пуста
+            if (this.queue.length > 0) {
+                if (this.currentIndex >= this.queue.length) this.currentIndex = 0;
+                return this.loadTrack(this.queue[this.currentIndex]);
+            }
             return false;
         }
+
         this.currentTrack = track;
         const url = URL.createObjectURL(file);
         this.audio.src = url;

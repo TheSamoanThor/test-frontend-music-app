@@ -202,12 +202,25 @@ var Database = class Database {
                 request.onerror = () => reject(request.error);
                 request.onsuccess = () => resolve(request.result);
             });
-            data[storeName] = records;
+
+            // Для хранилища tracks удаляем поля handle и file (они не сериализуются)
+            if (storeName === this.stores.tracks) {
+                data[storeName] = records.map(track => {
+                    const { handle, file, ...rest } = track; // удаляем несериализуемые поля
+                    return rest;
+                });
+            } else {
+                data[storeName] = records;
+            }
         }
         return data;
     }
 
     async importData(data) {
+        // Предупреждение, если в импортируемых треках есть handle или file (они не восстановятся)
+        if (data.tracks && data.tracks.some(t => t.handle || t.file)) {
+            alert('Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.');
+        }
         for (let storeName in data) {
             if (!data[storeName]) continue;
             const tx = this.db.transaction(storeName, 'readwrite');

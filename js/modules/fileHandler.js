@@ -93,7 +93,19 @@ var FileHandler = class FileHandler {
         if (track.handle) {
             try {
                 return await track.handle.getFile();
-            } catch {
+            } catch (err) {
+                // Если ошибка связана с отсутствием разрешения, пробуем запросить
+                if (err.name === 'NotAllowedError' && track.handle.requestPermission) {
+                    try {
+                        const permission = await track.handle.requestPermission({ mode: 'read' });
+                        if (permission === 'granted') {
+                            return await track.handle.getFile();
+                        }
+                    } catch (permErr) {
+                        console.error('Не удалось получить разрешение:', permErr);
+                    }
+                }
+                console.error('Ошибка получения файла:', err);
                 return null;
             }
         } else if (track.file) {
