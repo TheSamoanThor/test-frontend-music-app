@@ -22,6 +22,34 @@
         await db.setSetting('volume', e.target.value);
     });
 
-    document.getElementById('theme-select').addEventListener('change', () => themeManager.saveToDB(db));
-    document.getElementById('custom-color').addEventListener('input', utils.debounce(() => themeManager.saveToDB(db), 500));
+    // Навигация через кнопки в шапке
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const page = btn.dataset.page;
+            Router.navigate(page);
+        });
+    });
+
+    // Инициализация роутера
+    Router.init(ui, player);
+
+    // Обработчики для кнопок в настройках (дублируют основные, но находятся внутри страницы)
+    document.getElementById('theme-select-settings').addEventListener('change', (e) => {
+        themeManager.applyPreset(e.target.value);
+        themeManager.saveToDB(db);
+        // синхронизируем основной селект
+        document.getElementById('theme-select').value = e.target.value;
+    });
+    document.getElementById('custom-color-settings').addEventListener('input', utils.debounce((e) => {
+        themeManager.applyCustomColor(e.target.value);
+        themeManager.saveToDB(db);
+        document.getElementById('custom-color').value = e.target.value;
+    }, 500));
+    document.getElementById('export-btn-settings').addEventListener('click', () => ui.exportData());
+    document.getElementById('import-btn-settings').addEventListener('click', () => ui.importData());
+
+    // Кнопка назад из деталей трека
+    document.getElementById('back-to-library').addEventListener('click', () => {
+        Router.navigate('library');
+    });
 })();

@@ -11,31 +11,35 @@
         <header>
             <div class="toolbar">
                 <button id="select-music-btn">📂 Выбрать папку с музыкой</button>
+                <nav class="main-nav">
+                    <button class="nav-btn" data-page="library">📚 Библиотека</button>
+                    <button class="nav-btn" data-page="queue">⏯️ Очередь</button>
+                    <button class="nav-btn" data-page="settings">⚙️ Настройки</button>
+                </nav>
                 <button id="import-btn">📥 Импорт</button>
                 <button id="export-btn">📤 Экспорт</button>
                 <select id="theme-select">
                     <option value="light">☀️ Светлая</option>
                     <option value="dark">🌙 Тёмная</option>
-                    <option value="dark2">🌙 Тёмная2</option>
-                    <option value="custom">🎨 Пользовательская</option>
+                    <option value="dark2">🌙 Тёмная 2</option>
                 </select>
                 <input type="color" id="custom-color" value="#4a90e2" title="Основной цвет">
             </div>
         </header>
 
         <main>
-            <!-- Библиотека -->
-            <section class="library-panel">
+            <!-- Страница библиотеки -->
+            <div class="page" id="page-library">
                 <h2>📚 Библиотека</h2>
                 <div class="filter-bar">
                     <input type="text" id="tag-filter" placeholder="Фильтр по тегам (рок, поп, ...)">
                     <button id="apply-filter">🔍 Применить</button>
                 </div>
                 <ul id="track-list" class="track-list"></ul>
-            </section>
+            </div>
 
-            <!-- Очередь -->
-            <section class="queue-panel">
+            <!-- Страница очереди -->
+            <div class="page" id="page-queue">
                 <h2>⏯️ Очередь</h2>
                 <div class="queue-controls">
                     <button id="shuffle-queue">🔀 Перемешать</button>
@@ -43,10 +47,50 @@
                     <button id="add-random">🎲 Добавить случайную</button>
                 </div>
                 <ul id="queue-list" class="queue-list"></ul>
-            </section>
+            </div>
+
+            <!-- Страница настроек -->
+            <div class="page" id="page-settings">
+                <h2>⚙️ Настройки</h2>
+                <div class="settings-section">
+                    <h3>Внешний вид</h3>
+                    <div class="setting-item">
+                        <label for="theme-select-settings">Тема:</label>
+                        <select id="theme-select-settings">
+                            <option value="light">☀️ Светлая</option>
+                            <option value="dark">🌙 Тёмная</option>
+                            <option value="dark2">🌙 Тёмная 2</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="custom-color-settings">Основной цвет:</label>
+                        <input type="color" id="custom-color-settings" value="#4a90e2">
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Управление данными</h3>
+                    <div class="setting-item">
+                        <button id="export-btn-settings">📤 Экспортировать данные</button>
+                        <button id="import-btn-settings">📥 Импортировать данные</button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Исключённые треки</h3>
+                    <ul id="excluded-tracks-list" class="excluded-list"></ul>
+                </div>
+            </div>
+
+            <!-- Страница детальной информации о треке -->
+            <div class="page" id="page-track">
+                <h2>🎵 Детали трека</h2>
+                <div id="track-detail-container">
+                    <!-- сюда будет подгружаться информация -->
+                </div>
+                <button id="back-to-library" class="back-btn">← Назад в библиотеку</button>
+            </div>
         </main>
 
-        <!-- Плеер -->
+        <!-- Плеер (всегда видим) -->
         <footer class="player-bar">
             <div class="player-info">
                 <span id="current-track-name">🎵 Не выбрано</span>
@@ -61,13 +105,14 @@
         </footer>
     </div>
 
-    <!-- Подключение скриптов (без внешних библиотек) -->
+    <!-- Подключение скриптов -->
     <script src="js/modules/utils.js"></script>
     <script src="js/modules/db.js"></script>
     <script src="js/modules/fileHandler.js"></script>
     <script src="js/modules/player.js"></script>
     <script src="js/modules/themes.js"></script>
     <script src="js/modules/ui.js"></script>
+    <script src="js/router.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

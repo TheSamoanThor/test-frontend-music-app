@@ -70,44 +70,59 @@ header {
     padding: 0.3rem;
 }
 
+.main-nav {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.nav-btn {
+    background: none;
+    border: 1px solid transparent;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.nav-btn:hover {
+    background-color: var(--hover-bg);
+}
+
+.nav-btn.active {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color);
+    color: white;
+}
+
 main {
     flex: 1;
-    display: flex;
     overflow: hidden;
     padding: 1rem;
-    gap: 1rem;
 }
 
-.library-panel, .queue-panel {
-    background-color: var(--secondary-bg);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: var(--shadow);
+.page {
+    height: 100%;
+    overflow-y: auto;
+    display: block;
 }
 
-.library-panel {
-    flex: 2;
-}
-
-.queue-panel {
-    flex: 1;
+.page.hidden {
+    display: none;
 }
 
 h2 {
-    font-size: 1.2rem;
-    padding: 1rem;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
-    background-color: var(--secondary-bg);
 }
 
 .filter-bar {
     display: flex;
     gap: 0.5rem;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
 }
 
 .filter-bar input {
@@ -128,11 +143,9 @@ h2 {
     cursor: pointer;
 }
 
-.track-list, .queue-list {
+.track-list, .queue-list, .excluded-list {
     list-style: none;
     overflow-y: auto;
-    flex: 1;
-    padding: 0.5rem;
 }
 
 .track-item, .queue-item {
@@ -168,7 +181,7 @@ h2 {
     color: var(--text-color);
 }
 
-.track-item button, .queue-item button {
+.track-item button, .queue-item button, .excluded-item button {
     padding: 0.3rem 0.6rem;
     border: none;
     border-radius: 4px;
@@ -179,7 +192,7 @@ h2 {
     font-size: 0.8rem;
 }
 
-.track-item button:last-child, .queue-item button:last-child {
+.track-item button:last-child, .queue-item button:last-child, .excluded-item button:last-child {
     margin-right: 0;
 }
 
@@ -210,6 +223,80 @@ h2 {
     border: none;
     border-radius: var(--border-radius);
     cursor: pointer;
+}
+
+.settings-section {
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.settings-section h3 {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.setting-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.setting-item label {
+    min-width: 120px;
+}
+
+.setting-item select,
+.setting-item input[type="color"] {
+    padding: 0.4rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.setting-item button {
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.excluded-list {
+    margin-top: 0.5rem;
+}
+
+.excluded-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.excluded-item:last-child {
+    border-bottom: none;
+}
+
+.back-btn {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+.back-btn:hover {
+    background-color: var(--hover-bg);
 }
 
 .player-bar {
@@ -265,8 +352,13 @@ h2 {
 }
 
 @media (max-width: 768px) {
-    main {
+    .toolbar {
         flex-direction: column;
+        align-items: stretch;
+    }
+    .main-nav {
+        margin-left: 0;
+        justify-content: center;
     }
     .player-bar {
         flex-direction: column;
