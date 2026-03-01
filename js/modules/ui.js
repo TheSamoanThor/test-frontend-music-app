@@ -5,7 +5,7 @@ var UI = class UI {
         this.fileHandler = fileHandler;
         this.themeManager = themeManager;
         this.currentFilterTags = [];
-        this.searchTerm = ''; // для поиска по имени
+        this.searchTerm = '';
 
         this.initEventListeners();
     }
@@ -16,25 +16,17 @@ var UI = class UI {
             if (tracks.length) this.renderLibrary();
         });
 
-        // Экспорт/импорт (основные кнопки в шапке)
         document.getElementById('export-btn').addEventListener('click', () => this.exportData());
         document.getElementById('import-btn').addEventListener('click', () => this.importData());
 
-        // Тема (основные элементы в шапке)
         document.getElementById('theme-select').addEventListener('change', (e) => {
             this.themeManager.applyPreset(e.target.value);
             this.themeManager.saveToDB(this.db);
             const settingsSelect = document.getElementById('theme-select-settings');
             if (settingsSelect) settingsSelect.value = e.target.value;
-        });
-        document.getElementById('custom-color').addEventListener('input', (e) => {
-            this.themeManager.applyCustomColor(e.target.value);
-            this.themeManager.saveToDB(this.db);
-            const settingsColor = document.getElementById('custom-color-settings');
-            if (settingsColor) settingsColor.value = e.target.value;
+            this.renderThemeFineTuning();
         });
 
-        // Фильтр по тегам (с debounce)
         const tagFilterInput = document.getElementById('tag-filter');
         if (tagFilterInput) {
             tagFilterInput.addEventListener('input', utils.debounce((e) => {
@@ -43,14 +35,6 @@ var UI = class UI {
             }, 300));
         }
 
-        // Кнопка "Применить" (оставляем для явного применения)
-        document.getElementById('apply-filter').addEventListener('click', () => {
-            const value = document.getElementById('tag-filter').value;
-            this.currentFilterTags = utils.parseTags(value);
-            this.renderLibrary();
-        });
-
-        // Поиск по имени (с debounce)
         const searchInput = document.getElementById('search-name');
         if (searchInput) {
             searchInput.addEventListener('input', utils.debounce((e) => {
@@ -59,28 +43,40 @@ var UI = class UI {
             }, 300));
         }
 
-        // Управление плеером
         document.getElementById('play-pause').addEventListener('click', () => this.player.togglePlay());
         document.getElementById('prev').addEventListener('click', () => this.player.prev());
         document.getElementById('next').addEventListener('click', () => this.player.next());
         document.getElementById('volume').addEventListener('input', (e) => this.player.setVolume(e.target.value));
         document.getElementById('progress').addEventListener('input', (e) => this.player.seek(e.target.value));
 
-        // Управление очередью
         document.getElementById('shuffle-queue').addEventListener('click', () => this.player.shuffleQueue());
         document.getElementById('clear-queue').addEventListener('click', () => this.player.clearQueue());
         document.getElementById('add-random').addEventListener('click', () => this.player.addRandomFromLibrary());
 
-        // Делегированный обработчик для удаления правил громкости
+        // Глобальный обработчик для удаления тегов и правил громкости
         document.addEventListener('click', async (e) => {
             if (e.target.classList.contains('delete-tag-volume')) {
                 const tag = e.target.dataset.tag;
                 await this.db.deleteTagVolume(tag);
                 this.renderTagVolumeSettings();
             }
+            else if (e.target.classList.contains('remove-tag-btn')) {
+                const trackId = e.target.dataset.trackId;
+                const tagToRemove = e.target.dataset.tag;
+                const tags = await this.db.getTags(trackId);
+                const newTags = tags.filter(t => t !== tagToRemove);
+                await this.db.setTags(trackId, newTags);
+                this.renderLibrary();
+                if (window.location.hash.includes(`track/${trackId}`)) {
+                    this.loadTrackDetail(trackId);
+                }
+                // Если это текущий трек, обновить громкость
+                if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
+                    await this.player.updateEffectiveVolume();
+                }
+            }
         });
 
-        // Форма добавления правила громкости
         document.getElementById('add-tag-volume-btn')?.addEventListener('click', async () => {
             const tag = document.getElementById('new-volume-tag').value.trim();
             const vol = parseFloat(document.getElementById('new-volume-factor').value);
@@ -93,9 +89,30 @@ var UI = class UI {
                 alert('Введите корректный тег и коэффициент (0.0 – 2.0)');
             }
         });
+
+        // Drag & drop из библиотеки в очередь (исправлено дублирование)
+        const queueList = document.getElementById('queue-list');
+        if (queueList) {
+            queueList.addEventListener('dragover', (e) => e.preventDefault());
+            let dropPending = false; // защита от множественных срабатываний
+            queueList.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                if (dropPending) return;
+                dropPending = true;
+                const trackId = e.dataTransfer.getData('text/plain');
+                if (trackId) {
+                    // Проверяем, нет ли уже такого трека в очереди (опционально, можно убрать если нужны дубликаты)
+                    if (!this.player.queue.includes(trackId)) {
+                        await this.player.addToQueue([trackId]);
+                    } else {
+                        console.log('Трек уже в очереди, дубликат не добавлен');
+                    }
+                }
+                setTimeout(() => { dropPending = false; }, 300);
+            });
+        }
     }
 
-    // Синхронизирует поле фильтра с текущим набором тегов
     syncFilterInput() {
         const input = document.getElementById('tag-filter');
         if (input) {
@@ -104,13 +121,12 @@ var UI = class UI {
     }
 
     async renderLibrary() {
-        // Обновляем поле фильтра, чтобы оно отображало актуальные теги
         this.syncFilterInput();
 
         const allTracks = await this.db.getAllTracks();
         let filtered = allTracks;
 
-        // Фильтр по тегам
+        // Фильтр по тегам (частичное совпадение начала тега)
         if (this.currentFilterTags.length > 0) {
             const trackTagPromises = allTracks.map(async track => ({
                 track,
@@ -118,7 +134,12 @@ var UI = class UI {
             }));
             const trackTags = await Promise.all(trackTagPromises);
             filtered = trackTags
-                .filter(item => this.currentFilterTags.every(tag => item.tags.includes(tag)))
+                .filter(item => {
+                    return this.currentFilterTags.every(filterTag => {
+                        const lowerFilter = filterTag.toLowerCase();
+                        return item.tags.some(tag => tag.toLowerCase().startsWith(lowerFilter));
+                    });
+                })
                 .map(item => item.track);
         }
 
@@ -135,9 +156,16 @@ var UI = class UI {
             const isExcluded = tags.includes('🚫 excluded');
             const li = document.createElement('li');
             li.className = 'track-item';
+            li.setAttribute('draggable', 'true');
+            li.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', track.id);
+            });
+            const tagsHtml = tags.length > 0 
+                ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${track.id}" data-tag="${t}">✖</button></span>`).join(' ')
+                : 'без тегов';
             li.innerHTML = `
                 <span><strong>${track.name}</strong> (${utils.formatTime(track.duration)})</span>
-                <div class="track-tags">🏷️ ${tags.join(', ') || 'без тегов'}</div>
+                <div class="track-tags">🏷️ ${tagsHtml}</div>
                 <div>
                     <input type="text" placeholder="новый тег" class="tag-input" data-id="${track.id}">
                     <button class="add-tag-btn" data-id="${track.id}">➕ Добавить</button>
@@ -149,7 +177,6 @@ var UI = class UI {
             listEl.appendChild(li);
         }
 
-        // Обработчики для добавления тега
         document.querySelectorAll('.add-tag-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
@@ -161,12 +188,14 @@ var UI = class UI {
                         currentTags.push(newTag);
                         await this.db.setTags(id, currentTags);
                         this.renderLibrary();
+                        if (this.player.currentTrack && this.player.currentTrack.id === id) {
+                            await this.player.updateEffectiveVolume();
+                        }
                     }
                 }
             });
         });
 
-        // Обработчики для исключения/включения
         document.querySelectorAll('.exclude-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
@@ -180,10 +209,12 @@ var UI = class UI {
                     await this.db.setTags(id, tags);
                 }
                 this.renderLibrary();
+                if (this.player.currentTrack && this.player.currentTrack.id === id) {
+                    await this.player.updateEffectiveVolume();
+                }
             });
         });
 
-        // Обработчики для добавления в очередь
         document.querySelectorAll('.play-now-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
@@ -196,7 +227,6 @@ var UI = class UI {
             });
         });
 
-        // Обработчики для деталей
         document.querySelectorAll('.details-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.target.dataset.id;
@@ -214,6 +244,7 @@ var UI = class UI {
             if (!track) continue;
             const li = document.createElement('li');
             li.className = 'queue-item';
+            li.dataset.id = track.id;  // обязательно для Sortable
             li.innerHTML = `
                 <span>${track.name}</span>
                 <div class="queue-controls">
@@ -225,6 +256,7 @@ var UI = class UI {
             listEl.appendChild(li);
         }
 
+        // Обработчики для кнопок (оставляем как есть)
         document.querySelectorAll('.queue-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const index = parseInt(e.target.dataset.index);
@@ -257,6 +289,9 @@ var UI = class UI {
                 await this.player.removeFromQueue(index);
             });
         });
+
+        // После полной перерисовки очереди переинициализируем Drag & Drop
+        DragDrop.initQueue(this);
     }
 
     updateCurrentTrack(track) {
@@ -296,17 +331,15 @@ var UI = class UI {
         input.click();
     }
 
-    // Синхронизация страницы настроек
     async syncSettingsPage() {
         const preset = await this.db.getSetting('theme-preset') || 'light';
         const color = await this.db.getSetting('theme-custom-color') || '#4a90e2';
-        
+
         const themeSelect = document.getElementById('theme-select-settings');
         const colorInput = document.getElementById('custom-color-settings');
         if (themeSelect) themeSelect.value = preset;
         if (colorInput) colorInput.value = color;
 
-        // Загружаем список исключённых треков (по тегу '🚫 excluded')
         const allTracks = await this.db.getAllTracks();
         const excludedList = document.getElementById('excluded-tracks-list');
         excludedList.innerHTML = '';
@@ -335,6 +368,7 @@ var UI = class UI {
         });
 
         await this.renderTagVolumeSettings();
+        await this.renderThemeFineTuning();
     }
 
     async renderTagVolumeSettings() {
@@ -362,7 +396,65 @@ var UI = class UI {
         container.innerHTML = html;
     }
 
-    // Загрузка детальной информации о треке
+    async renderThemeFineTuning() {
+        const container = document.getElementById('theme-fine-tuning');
+        if (!container) return;
+        const vars = [
+            { css: '--bg-color', label: 'Фон' },
+            { css: '--text-color', label: 'Текст' },
+            { css: '--primary-color', label: 'Основной цвет' },
+            { css: '--secondary-bg', label: 'Фон второстепенный' },
+            { css: '--border-color', label: 'Цвет границ' },
+            { css: '--player-bg', label: 'Фон плеера' },
+            { css: '--hover-bg', label: 'Фон при наведении' }
+        ];
+        let html = '<div class="theme-fine-grid">';
+        for (let v of vars) {
+            const currentValue = getComputedStyle(this.themeManager.root).getPropertyValue(v.css).trim();
+            html += `
+                <div class="theme-fine-item">
+                    <label>${v.label}</label>
+                    <input type="color" class="theme-var-input" data-var="${v.css}" value="${utils.rgbToHex(currentValue)}">
+                </div>
+            `;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+
+        container.querySelectorAll('.theme-var-input').forEach(input => {
+            input.addEventListener('input', utils.debounce(async (e) => {
+                const varName = e.target.dataset.var;
+                const value = e.target.value;
+                this.themeManager.root.style.setProperty(varName, value);
+                await this.db.setSetting('theme:var:' + varName, value);
+            }, 200));
+        });
+
+        const resetBtn = document.getElementById('reset-theme-overrides');
+        if (resetBtn) {
+            resetBtn.onclick = async () => {
+                for (let v of vars) {
+                    await this.db.deleteSetting('theme:var:' + v.css);
+                }
+                this.themeManager.applyPreset(this.themeManager.currentPreset);
+                this.renderThemeFineTuning();
+            };
+        }
+    }
+
+    async loadThemeOverrides() {
+        const vars = [
+            '--bg-color', '--text-color', '--primary-color',
+            '--secondary-bg', '--border-color', '--player-bg', '--hover-bg'
+        ];
+        for (let cssVar of vars) {
+            const value = await this.db.getSetting('theme:var:' + cssVar);
+            if (value) {
+                this.themeManager.root.style.setProperty(cssVar, value);
+            }
+        }
+    }
+
     async loadTrackDetail(trackId) {
         const track = await this.db.getTrack(trackId);
         if (!track) {
@@ -374,12 +466,15 @@ var UI = class UI {
         const isExcluded = tags.includes('🚫 excluded');
 
         const container = document.getElementById('track-detail-container');
+        const tagsHtml = tags.length > 0 
+            ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${trackId}" data-tag="${t}">✖</button></span>`).join(' ')
+            : 'нет';
         container.innerHTML = `
             <div class="track-detail">
                 <h3>${track.name}</h3>
                 <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
                 <p><strong>Путь:</strong> ${track.path || 'неизвестно'}</p>
-                <p><strong>Теги:</strong> ${tags.join(', ') || 'нет'}</p>
+                <p><strong>Теги:</strong> ${tagsHtml}</p>
                 <p><strong>Исключён:</strong> ${isExcluded ? 'да' : 'нет'}</p>
                 <div class="track-detail-actions">
                     <button id="detail-add-tag">➕ Добавить тег</button>
@@ -397,6 +492,9 @@ var UI = class UI {
                 tags.push(newTag);
                 await this.db.setTags(trackId, tags);
                 this.loadTrackDetail(trackId);
+                if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
+                    await this.player.updateEffectiveVolume();
+                }
             }
         });
 
@@ -410,6 +508,9 @@ var UI = class UI {
                 await this.db.setTags(trackId, tags);
             }
             this.loadTrackDetail(trackId);
+            if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
+                await this.player.updateEffectiveVolume();
+            }
         });
 
         document.getElementById('detail-add-to-queue').addEventListener('click', async () => {

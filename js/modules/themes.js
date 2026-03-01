@@ -23,7 +23,7 @@ var ThemeManager = class ThemeManager {
             dark2: {
                 '--bg-color': '#000',
                 '--text-color': '#e0e0e0',
-                '--primary-color': '#3a0d6b',
+                '--primary-color': '#3a3a3a',
                 '--secondary-bg': '#000',
                 '--border-color': '#444',
                 '--player-bg': '#000',
@@ -73,6 +73,33 @@ var ThemeManager = class ThemeManager {
                 '--border-color': '#bdbdbd',
                 '--player-bg': '#eeeeee',
                 '--hover-bg': '#e0e0e0'
+            },
+            dracula: {
+                '--bg-color': '#282a36',
+                '--text-color': '#f8f8f2',
+                '--primary-color': '#bd93f9',
+                '--secondary-bg': '#44475a',
+                '--border-color': '#6272a4',
+                '--player-bg': '#21222c',
+                '--hover-bg': '#6272a4'
+            },
+            nord: {
+                '--bg-color': '#2e3440',
+                '--text-color': '#d8dee9',
+                '--primary-color': '#88c0d0',
+                '--secondary-bg': '#3b4252',
+                '--border-color': '#4c566a',
+                '--player-bg': '#434c5e',
+                '--hover-bg': '#5e81ac'
+            },
+            solarized: {
+                '--bg-color': '#fdf6e3',
+                '--text-color': '#657b83',
+                '--primary-color': '#268bd2',
+                '--secondary-bg': '#eee8d5',
+                '--border-color': '#93a1a1',
+                '--player-bg': '#eee8d5',
+                '--hover-bg': '#586e75'
             }
         };
         this.currentPreset = 'light';
@@ -103,7 +130,9 @@ var ThemeManager = class ThemeManager {
         const color = await db.getSetting('theme-custom-color') || '#4a90e2';
         this.applyPreset(preset);
         this.applyCustomColor(color);
-        document.getElementById('theme-select').value = preset;
-        document.getElementById('custom-color').value = color;
+        const themeSelect = document.getElementById('theme-select');
+        if (themeSelect) themeSelect.value = preset;
+        const customColor = document.getElementById('custom-color');
+        if (customColor) customColor.value = color;
     }
 };

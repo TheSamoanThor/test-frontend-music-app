@@ -8,7 +8,7 @@ var Player = class Player {
         this.currentIndex = -1;
         this.isPlaying = false;
         this.ui = null;
-        this.baseVolume = 80; // значение по умолчанию (0-100)
+        this.baseVolume = 80;
 
         this.initAudioEvents();
     }
@@ -59,7 +59,6 @@ var Player = class Player {
         this.audio.src = url;
         this.audio.load();
 
-        // Применяем громкость с учётом тегов
         await this.updateEffectiveVolume();
 
         if (this.isPlaying) this.audio.play();
@@ -70,13 +69,18 @@ var Player = class Player {
     async updateEffectiveVolume() {
         if (!this.currentTrack) return;
         const tags = await this.db.getTags(this.currentTrack.id);
-        let factor = 1.0;
-        for (let tag of tags) {
-            const vol = await this.db.getTagVolume(tag);
-            factor *= vol; // перемножаем все коэффициенты
+        let factor;
+        const volFactor = utils.extractVolumeFactorFromTags(tags);
+        if (volFactor !== null) {
+            factor = volFactor;
+        } else {
+            factor = 1.0;
+            for (let tag of tags) {
+                const vol = await this.db.getTagVolume(tag);
+                factor *= vol;
+            }
+            factor = Math.min(2.0, Math.max(0.1, factor));
         }
-        // ограничиваем factor разумными пределами (например, 0.1 – 2.0)
-        factor = Math.min(2.0, Math.max(0.1, factor));
         const effective = (this.baseVolume / 100) * factor;
         this.audio.volume = Math.min(1, Math.max(0, effective));
     }
@@ -193,7 +197,6 @@ var Player = class Player {
 
     setVolume(percent) {
         this.baseVolume = Math.min(100, Math.max(0, percent));
-        // Если текущий трек есть, пересчитываем громкость
         if (this.currentTrack) {
             this.updateEffectiveVolume();
         } else {

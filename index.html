@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Player с тегами и очередью</title>
     <link rel="stylesheet" href="styles.css">
+    <!-- Sortable для drag & drop очереди -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -27,18 +29,18 @@
                     <option value="green">🍃 Зелёная</option>
                     <option value="orange">🍊 Оранжевая</option>
                     <option value="monochrome">⚫ Монохромная</option>
+                    <option value="dracula">🧛 Дракула</option>
+                    <option value="nord">❄️ Норд</option>
+                    <option value="solarized">☀️ Solarized</option>
                 </select>
-                <input type="color" id="custom-color" value="#4a90e2" title="Основной цвет">
             </div>
         </header>
 
         <main>
-            <!-- Страница библиотеки -->
             <div class="page" id="page-library">
                 <h2>📚 Библиотека</h2>
                 <div class="filter-bar">
                     <input type="text" id="tag-filter" placeholder="Фильтр по тегам (рок, поп, ...)">
-                    <button id="apply-filter">🔍 Применить</button>
                 </div>
                 <div class="search-bar">
                     <input type="text" id="search-name" placeholder="Поиск по названию...">
@@ -46,7 +48,6 @@
                 <ul id="track-list" class="track-list"></ul>
             </div>
 
-            <!-- Страница очереди -->
             <div class="page" id="page-queue">
                 <h2>⏯️ Очередь</h2>
                 <div class="queue-controls">
@@ -57,7 +58,6 @@
                 <ul id="queue-list" class="queue-list"></ul>
             </div>
 
-            <!-- Страница настроек -->
             <div class="page" id="page-settings">
                 <h2>⚙️ Настройки</h2>
                 <div class="settings-section">
@@ -73,6 +73,9 @@
                             <option value="green">🍃 Зелёная</option>
                             <option value="orange">🍊 Оранжевая</option>
                             <option value="monochrome">⚫ Монохромная</option>
+                            <option value="dracula">🧛 Дракула</option>
+                            <option value="nord">❄️ Норд</option>
+                            <option value="solarized">☀️ Solarized</option>
                         </select>
                     </div>
                     <div class="setting-item">
@@ -80,6 +83,13 @@
                         <input type="color" id="custom-color-settings" value="#4a90e2">
                     </div>
                 </div>
+
+                <div class="settings-section">
+                    <h3>Тонкая настройка темы</h3>
+                    <div id="theme-fine-tuning"></div>
+                    <button id="reset-theme-overrides">Сбросить к пресету</button>
+                </div>
+
                 <div class="settings-section">
                     <h3>Управление данными</h3>
                     <div class="setting-item">
@@ -97,17 +107,13 @@
                 </div>
             </div>
 
-            <!-- Страница детальной информации о треке -->
             <div class="page" id="page-track">
                 <h2>🎵 Детали трека</h2>
-                <div id="track-detail-container">
-                    <!-- сюда будет подгружаться информация -->
-                </div>
+                <div id="track-detail-container"></div>
                 <button id="back-to-library" class="back-btn">← Назад в библиотеку</button>
             </div>
         </main>
 
-        <!-- Плеер (всегда видим) -->
         <footer class="player-bar">
             <div class="player-info">
                 <span id="current-track-name">🎵 Не выбрано</span>
@@ -122,13 +128,13 @@
         </footer>
     </div>
 
-    <!-- Подключение скриптов -->
     <script src="js/modules/utils.js"></script>
     <script src="js/modules/db.js"></script>
     <script src="js/modules/fileHandler.js"></script>
     <script src="js/modules/player.js"></script>
     <script src="js/modules/themes.js"></script>
     <script src="js/modules/ui.js"></script>
+    <script src="js/modules/dragDrop.js"></script>
     <script src="js/router.js"></script>
     <script src="js/main.js"></script>
 </body>

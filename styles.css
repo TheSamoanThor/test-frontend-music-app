@@ -171,6 +171,10 @@ h2 {
 .track-tags {
     font-size: 0.85rem;
     color: var(--primary-color);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
 }
 
 .track-item input.tag-input {
@@ -212,7 +216,7 @@ h2 {
 .queue-controls {
     display: flex;
     gap: 0.3rem;
-    margin-top: 10px;
+    margin: 10px;
     justify-content: center;
 }
 
@@ -400,4 +404,72 @@ h2 {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+}
+
+/* Стили для тонкой настройки темы */
+.theme-fine-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+.theme-fine-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.theme-fine-item label {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+.theme-fine-item input[type="color"] {
+    width: 100%;
+    height: 40px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    cursor: pointer;
+}
+#reset-theme-overrides {
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    margin-top: 1rem;
+}
+
+/* Стили для отображения тегов с кнопками удаления */
+.tag-badge {
+    display: inline-block;
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 0.2rem 0.5rem;
+    margin: 0.2rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.tag-badge button.remove-tag-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    margin-left: 0.3rem;
+    padding: 0 0.2rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tag-badge button.remove-tag-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
 }

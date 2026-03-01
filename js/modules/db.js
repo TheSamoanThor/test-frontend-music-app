@@ -1,14 +1,14 @@
 var Database = class Database {
     constructor() {
         this.dbName = 'MusicPlayerDB';
-        this.dbVersion = 2; // увеличена версия для нового хранилища
+        this.dbVersion = 2;
         this.db = null;
         this.stores = {
             tracks: 'tracks',
             queue: 'queue',
             settings: 'settings',
             tags: 'tags',
-            tagVolumes: 'tagVolumes' // новое хранилище для громкости по тегам
+            tagVolumes: 'tagVolumes'
         };
     }
 
@@ -24,7 +24,6 @@ var Database = class Database {
                 const db = event.target.result;
                 const oldVersion = event.oldVersion;
 
-                // Создаём хранилища, если их нет (версия 1)
                 if (!db.objectStoreNames.contains(this.stores.tracks)) {
                     db.createObjectStore(this.stores.tracks, { keyPath: 'id' });
                 }
@@ -38,13 +37,10 @@ var Database = class Database {
                     db.createObjectStore(this.stores.tags, { keyPath: 'trackId' });
                 }
 
-                // При переходе с версии 1 на 2
                 if (oldVersion < 2) {
-                    // Удаляем устаревшее хранилище exclusions
                     if (db.objectStoreNames.contains('exclusions')) {
                         db.deleteObjectStore('exclusions');
                     }
-                    // Создаём хранилище для громкости тегов
                     if (!db.objectStoreNames.contains(this.stores.tagVolumes)) {
                         db.createObjectStore(this.stores.tagVolumes, { keyPath: 'tag' });
                     }
@@ -94,7 +90,7 @@ var Database = class Database {
         });
     }
 
-    // ---- Очередь (один объект с ключом 'queue') ----
+    // ---- Очередь ----
     async getQueue() {
         const tx = this.db.transaction(this.stores.queue, 'readonly');
         const store = tx.objectStore(this.stores.queue);
@@ -115,7 +111,7 @@ var Database = class Database {
         });
     }
 
-    // ---- Теги (ключ - trackId) ----
+    // ---- Теги ----
     async getTags(trackId) {
         const tx = this.db.transaction(this.stores.tags, 'readonly');
         const store = tx.objectStore(this.stores.tags);
@@ -136,7 +132,7 @@ var Database = class Database {
         });
     }
 
-    // ---- Настройки (ключ - произвольная строка) ----
+    // ---- Настройки ----
     async getSetting(key) {
         const tx = this.db.transaction(this.stores.settings, 'readonly');
         const store = tx.objectStore(this.stores.settings);
@@ -157,7 +153,17 @@ var Database = class Database {
         });
     }
 
-    // ---- Громкость для тегов (новое) ----
+    async deleteSetting(key) {
+        const tx = this.db.transaction(this.stores.settings, 'readwrite');
+        const store = tx.objectStore(this.stores.settings);
+        return new Promise((resolve, reject) => {
+            const request = store.delete(key);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    }
+
+    // ---- Громкость для тегов ----
     async getTagVolume(tag) {
         const tx = this.db.transaction(this.stores.tagVolumes, 'readonly');
         const store = tx.objectStore(this.stores.tagVolumes);
@@ -198,7 +204,7 @@ var Database = class Database {
         });
     }
 
-    // ---- Экспорт / Импорт всех данных ----
+    // ---- Экспорт / Импорт ----
     async exportData() {
         const stores = [this.stores.tracks, this.stores.queue, this.stores.settings, this.stores.tags, this.stores.tagVolumes];
         const data = {};
@@ -211,7 +217,6 @@ var Database = class Database {
                 request.onsuccess = () => resolve(request.result);
             });
 
-            // Для хранилища tracks удаляем поля handle и file (они не сериализуются)
             if (storeName === this.stores.tracks) {
                 data[storeName] = records.map(track => {
                     const { handle, file, ...rest } = track;
@@ -225,12 +230,11 @@ var Database = class Database {
     }
 
     async importData(data) {
-        // Предупреждение, если в импортируемых треках есть handle или file (они не восстановятся)
         if (data.tracks && data.tracks.some(t => t.handle || t.file)) {
             alert('Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.');
         }
         for (let storeName in data) {
-            if (!data[storeName] || storeName === 'exclusions') continue; // пропускаем устаревшее хранилище
+            if (!data[storeName] || storeName === 'exclusions') continue;
             const tx = this.db.transaction(storeName, 'readwrite');
             const store = tx.objectStore(storeName);
             await new Promise((resolve, reject) => {
