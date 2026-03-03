@@ -3,3 +3,10 @@
 Copy_Files_POSSIBLE_DANGER_RUN_ONLY_HERE.py
 start_copy.bat
 Project_Files.txt
+
+# code assembler
+node_modules
+package-lock.json
+package.json
+dist
+assembled_music_player.rar
