@@ -18,6 +18,7 @@
                 <nav class="main-nav">
                     <button class="nav-btn" data-page="library">📚 Библиотека</button>
                     <button class="nav-btn" data-page="queue">⏯️ Очередь</button>
+                    <button class="nav-btn" data-page="playlists">📋 Плейлисты</button>
                     <button class="nav-btn" data-page="settings">⚙️ Настройки</button>
                 </nav>
                 <button id="import-btn">📥 Импорт</button>
@@ -56,8 +57,17 @@
                     <button id="shuffle-queue">🔀 Перемешать</button>
                     <button id="clear-queue">🗑️ Очистить</button>
                     <button id="add-random">🎲 Добавить случайную</button>
+                    <button id="add-random-10">🎲 +10 случайных</button>
                 </div>
                 <ul id="queue-list" class="queue-list"></ul>
+            </div>
+
+            <div class="page" id="page-playlists">
+                <h2>📋 Плейлисты</h2>
+                <div class="playlist-controls">
+                    <button id="create-playlist" class="primary-btn">➕ Создать плейлист</button>
+                </div>
+                <div id="playlists-list" class="playlists-list"></div>
             </div>
 
             <div class="page" id="page-settings">
@@ -103,10 +113,7 @@
                     <h3>Исключённые треки</h3>
                     <ul id="excluded-tracks-list" class="excluded-list"></ul>
                 </div>
-                <div class="settings-section">
-                    <h3>Громкость по тегам</h3>
-                    <div id="tag-volume-settings"></div>
-                </div>
+                <!-- Удалён блок "Громкость по тегам" -->
             </div>
 
             <div class="page" id="page-track">
@@ -116,7 +123,7 @@
             </div>
         </main>
 
-        <footer class="player-bar">
+        <footer class="player-bar" id="player-bar">
             <div class="player-cover">
                 <img id="current-track-cover" src="" alt="cover">
                 <canvas id="player-visualizer" width="50" height="50" style="display: none;"></canvas>
@@ -135,6 +142,33 @@
         </footer>
     </div>
 
+    <!-- Popup для информации о текущем треке -->
+    <div id="track-popup" class="popup hidden">
+        <div class="popup-content">
+            <span class="close-popup">&times;</span>
+            <div class="popup-cover">
+                <img id="popup-cover-img" src="" alt="cover">
+                <canvas id="popup-visualizer" width="200" height="200"></canvas>
+                <div class="popup-no-cover">🎵</div>
+            </div>
+            <h3 id="popup-track-title">Название трека</h3>
+            <p id="popup-track-artist"></p>
+            <div id="popup-tags" class="popup-tags"></div>
+            <div class="popup-progress">
+                <input type="range" id="popup-progress" value="0" min="0" max="100" step="0.1">
+                <span id="popup-time">0:00 / 0:00</span>
+            </div>
+            <div class="popup-volume">
+                <input type="range" id="popup-volume" value="80" min="0" max="100">
+            </div>
+            <div class="popup-actions">
+                <button id="popup-play-pause">▶️</button>
+                <button id="popup-add-to-queue">➕ В очередь</button>
+                <button id="popup-add-to-playlist">📋 В плейлист</button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/modules/utils.js"></script>
     <script src="js/modules/db.js"></script>
     <script src="js/modules/fileHandler.js"></script>
@@ -142,6 +176,7 @@
     <script src="js/modules/themes.js"></script>
     <script src="js/modules/ui.js"></script>
     <script src="js/modules/dragDrop.js"></script>
+    <script src="js/modules/popup.js"></script>
     <script src="js/router.js"></script>
     <script src="js/main.js"></script>
 </body>

@@ -1,14 +1,15 @@
 var Database = class Database {
     constructor() {
         this.dbName = 'MusicPlayerDB';
-        this.dbVersion = 2;
+        this.dbVersion = 3;
         this.db = null;
         this.stores = {
             tracks: 'tracks',
             queue: 'queue',
             settings: 'settings',
             tags: 'tags',
-            tagVolumes: 'tagVolumes'
+            tagVolumes: 'tagVolumes',
+            playlists: 'playlists'
         };
     }
 
@@ -43,6 +44,12 @@ var Database = class Database {
                     }
                     if (!db.objectStoreNames.contains(this.stores.tagVolumes)) {
                         db.createObjectStore(this.stores.tagVolumes, { keyPath: 'tag' });
+                    }
+                }
+
+                if (oldVersion < 3) {
+                    if (!db.objectStoreNames.contains(this.stores.playlists)) {
+                        db.createObjectStore(this.stores.playlists, { keyPath: 'id' });
                     }
                 }
             };
@@ -163,7 +170,7 @@ var Database = class Database {
         });
     }
 
-    // ---- Громкость для тегов ----
+    // ---- Громкость для тегов (оставлено для совместимости, но не используется в UI) ----
     async getTagVolume(tag) {
         const tx = this.db.transaction(this.stores.tagVolumes, 'readonly');
         const store = tx.objectStore(this.stores.tagVolumes);
@@ -204,9 +211,64 @@ var Database = class Database {
         });
     }
 
+    // ---- Плейлисты ----
+    async getAllPlaylists() {
+        const tx = this.db.transaction(this.stores.playlists, 'readonly');
+        const store = tx.objectStore(this.stores.playlists);
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+        });
+    }
+
+    async getPlaylist(id) {
+        const tx = this.db.transaction(this.stores.playlists, 'readonly');
+        const store = tx.objectStore(this.stores.playlists);
+        return new Promise((resolve, reject) => {
+            const request = store.get(id);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+        });
+    }
+
+    async addPlaylist(playlist) {
+        if (!playlist.id) {
+            playlist.id = utils.generateId();
+        }
+        const tx = this.db.transaction(this.stores.playlists, 'readwrite');
+        const store = tx.objectStore(this.stores.playlists);
+        return new Promise((resolve, reject) => {
+            const request = store.put(playlist);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(playlist.id);
+        });
+    }
+
+    async updatePlaylist(playlist) {
+        return this.addPlaylist(playlist);
+    }
+
+    async deletePlaylist(id) {
+        const tx = this.db.transaction(this.stores.playlists, 'readwrite');
+        const store = tx.objectStore(this.stores.playlists);
+        return new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    }
+
     // ---- Экспорт / Импорт ----
     async exportData() {
-        const stores = [this.stores.tracks, this.stores.queue, this.stores.settings, this.stores.tags, this.stores.tagVolumes];
+        const stores = [
+            this.stores.tracks,
+            this.stores.queue,
+            this.stores.settings,
+            this.stores.tags,
+            this.stores.tagVolumes,
+            this.stores.playlists
+        ];
         const data = {};
         for (let storeName of stores) {
             const tx = this.db.transaction(storeName, 'readonly');
@@ -235,6 +297,7 @@ var Database = class Database {
         }
         for (let storeName in data) {
             if (!data[storeName] || storeName === 'exclusions') continue;
+            if (!this.stores[storeName] && storeName !== this.stores.playlists) continue;
             const tx = this.db.transaction(storeName, 'readwrite');
             const store = tx.objectStore(storeName);
             await new Promise((resolve, reject) => {

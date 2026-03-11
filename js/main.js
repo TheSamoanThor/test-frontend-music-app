@@ -11,7 +11,9 @@
 
     player.setUI(ui);
 
-    // Инициализация drag & drop для очереди
+    const popup = new PopupManager(ui, player, fileHandler, db);
+    ui.initPopup(popup);
+
     DragDrop.initQueue(ui);
 
     await player.loadQueue();

@@ -32,6 +32,10 @@ const Router = {
                 document.getElementById('page-queue').classList.remove('hidden');
                 this.ui.renderQueue(this.player.queue);
                 break;
+            case 'playlists': // новая страница
+                document.getElementById('page-playlists').classList.remove('hidden');
+                this.ui.renderPlaylists();
+                break;
             case 'settings':
                 document.getElementById('page-settings').classList.remove('hidden');
                 this.ui.syncSettingsPage();
@@ -46,7 +50,7 @@ const Router = {
                 break;
             default:
                 document.getElementById('page-library').classList.remove('hidden');
-                if (activeBtn) activeBtn.classList.remove('active'); // если не найдено, сброс
+                if (activeBtn) activeBtn.classList.remove('active');
                 document.querySelector('.nav-btn[data-page="library"]').classList.add('active');
         }
     },

@@ -8,6 +8,7 @@ var UI = class UI {
         this.searchTerm = '';
         this.currentPictureUrl = null;
         this.detailPictureUrl = null;
+        this.popup = null;
 
         this.initEventListeners();
     }
@@ -54,14 +55,10 @@ var UI = class UI {
         document.getElementById('shuffle-queue').addEventListener('click', () => this.player.shuffleQueue());
         document.getElementById('clear-queue').addEventListener('click', () => this.player.clearQueue());
         document.getElementById('add-random').addEventListener('click', () => this.player.addRandomFromLibrary());
+        document.getElementById('add-random-10').addEventListener('click', () => this.player.addRandomTracks(10));
 
         document.addEventListener('click', async (e) => {
-            if (e.target.classList.contains('delete-tag-volume')) {
-                const tag = e.target.dataset.tag;
-                await this.db.deleteTagVolume(tag);
-                this.renderTagVolumeSettings();
-            }
-            else if (e.target.classList.contains('remove-tag-btn')) {
+            if (e.target.classList.contains('remove-tag-btn')) {
                 const trackId = e.target.dataset.trackId;
                 const tagToRemove = e.target.dataset.tag;
                 const tags = await this.db.getTags(trackId);
@@ -75,18 +72,13 @@ var UI = class UI {
                     await this.player.updateEffectiveVolume();
                 }
             }
-        });
-
-        document.getElementById('add-tag-volume-btn')?.addEventListener('click', async () => {
-            const tag = document.getElementById('new-volume-tag').value.trim();
-            const vol = parseFloat(document.getElementById('new-volume-factor').value);
-            if (tag && !isNaN(vol) && vol >= 0 && vol <= 2) {
-                await this.db.setTagVolume(tag, vol);
-                this.renderTagVolumeSettings();
-                document.getElementById('new-volume-tag').value = '';
-                document.getElementById('new-volume-factor').value = '1.0';
-            } else {
-                alert('Введите корректный тег и коэффициент (0.0 – 2.0)');
+            // Клик по треку в библиотеке -> переход на страницу деталей
+            else if (e.target.closest('.track-item') && !e.target.closest('button')) {
+                const trackItem = e.target.closest('.track-item');
+                const trackId = trackItem.querySelector('.add-tag-btn')?.dataset.id;
+                if (trackId) {
+                    Router.navigate('track', trackId);
+                }
             }
         });
 
@@ -109,6 +101,23 @@ var UI = class UI {
                 setTimeout(() => { dropPending = false; }, 300);
             });
         }
+
+        // Клик по плашке текущего трека (футер)
+        document.getElementById('player-bar').addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('input')) return;
+            if (this.player.currentTrack) {
+                this.popup.showForCurrentTrack();
+            }
+        });
+
+        // Кнопка создания плейлиста
+        document.getElementById('create-playlist')?.addEventListener('click', () => {
+            this.createPlaylistDialog();
+        });
+    }
+
+    initPopup(popup) {
+        this.popup = popup;
     }
 
     syncFilterInput() {
@@ -163,10 +172,12 @@ var UI = class UI {
                 <span><strong>${track.name}</strong> (${utils.formatTime(track.duration)})</span>
                 <div class="track-tags">🏷️ ${tagsHtml}</div>
                 <div>
-                    <input type="text" placeholder="новый тег" class="tag-input" data-id="${track.id}">
                     <button class="add-tag-btn" data-id="${track.id}">➕ Добавить</button>
+                    <input type="text" placeholder="новый тег" class="tag-input" data-id="${track.id}">
                     <button class="exclude-btn" data-id="${track.id}">${isExcluded ? '✅ Включить' : '🚫 Исключить'}</button>
                     <button class="play-now-btn" data-id="${track.id}">▶ В очередь</button>
+                    <button class="play-immediate-btn" data-id="${track.id}">▶ Сейчас</button>
+                    <button class="add-to-playlist-btn" data-id="${track.id}">📋 В плейлист</button>
                     <button class="details-btn" data-id="${track.id}">🔍 Подробнее</button>
                 </div>
             `;
@@ -175,6 +186,7 @@ var UI = class UI {
 
         document.querySelectorAll('.add-tag-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 const id = e.target.dataset.id;
                 const input = e.target.parentElement.querySelector('.tag-input');
                 const newTag = input.value.trim();
@@ -194,6 +206,7 @@ var UI = class UI {
 
         document.querySelectorAll('.exclude-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 const id = e.target.dataset.id;
                 const tags = await this.db.getTags(id);
                 const excludedTag = '🚫 excluded';
@@ -213,6 +226,7 @@ var UI = class UI {
 
         document.querySelectorAll('.play-now-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
                 const id = e.target.dataset.id;
                 await this.player.addToQueue([id]);
                 if (this.player.queue.length === 1) {
@@ -223,8 +237,46 @@ var UI = class UI {
             });
         });
 
+        // Новая кнопка "▶ Сейчас"
+        document.querySelectorAll('.play-immediate-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = e.target.dataset.id;
+                await this.player.playNow(id);
+            });
+        });
+
+        // Новая кнопка "📋 В плейлист"
+        document.querySelectorAll('.add-to-playlist-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const trackId = e.target.dataset.id;
+                const playlists = await this.db.getAllPlaylists();
+                if (playlists.length === 0) {
+                    alert('Сначала создайте плейлист');
+                    return;
+                }
+                const listStr = playlists.map((p, i) => `${i+1}: ${p.name}`).join('\n');
+                const choice = prompt(`Выберите плейлист (введите номер):\n${listStr}`);
+                if (choice) {
+                    const index = parseInt(choice) - 1;
+                    if (index >= 0 && index < playlists.length) {
+                        const playlist = playlists[index];
+                        if (!playlist.tracks.includes(trackId)) {
+                            playlist.tracks.push(trackId);
+                            await this.db.updatePlaylist(playlist);
+                            alert('Трек добавлен в плейлист');
+                        } else {
+                            alert('Трек уже есть в плейлисте');
+                        }
+                    }
+                }
+            });
+        });
+
         document.querySelectorAll('.details-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const id = e.target.dataset.id;
                 Router.navigate('track', id);
             });
@@ -401,33 +453,7 @@ var UI = class UI {
             });
         });
 
-        await this.renderTagVolumeSettings();
         await this.renderThemeFineTuning();
-    }
-
-    async renderTagVolumeSettings() {
-        const container = document.getElementById('tag-volume-settings');
-        if (!container) return;
-        const rules = await this.db.getAllTagVolumes();
-        let html = '<h4>Текущие правила</h4>';
-        if (rules.length === 0) {
-            html += '<p>Пока нет правил громкости для тегов.</p>';
-        } else {
-            html += '<ul>';
-            for (let rule of rules) {
-                html += `<li>${rule.tag} : ${rule.volume} <button class="delete-tag-volume" data-tag="${rule.tag}">Удалить</button></li>`;
-            }
-            html += '</ul>';
-        }
-        html += `
-            <h4>Добавить правило</h4>
-            <div style="display: flex; gap: 0.5rem;">
-                <input type="text" id="new-volume-tag" placeholder="тег">
-                <input type="number" id="new-volume-factor" step="0.1" min="0" max="2" value="1.0" style="width: 80px;">
-                <button id="add-tag-volume-btn">Добавить</button>
-            </div>
-        `;
-        container.innerHTML = html;
     }
 
     async renderThemeFineTuning() {
@@ -528,6 +554,7 @@ var UI = class UI {
                     <button id="detail-toggle-exclude">${isExcluded ? '✅ Вернуть в случайный выбор' : '🚫 Исключить из случайного выбора'}</button>
                     <button id="detail-add-to-queue">➕ В очередь</button>
                     <button id="detail-play-now">▶ Воспроизвести сейчас</button>
+                    <button id="detail-add-to-playlist">📋 В плейлист</button>
                 </div>
             </div>
         `;
@@ -572,14 +599,154 @@ var UI = class UI {
         });
 
         document.getElementById('detail-play-now').addEventListener('click', async () => {
-            await this.player.addToQueue([trackId]);
-            if (this.player.queue.length === 1) {
-                this.player.currentIndex = 0;
-                await this.player.loadTrack(trackId);
-                this.player.play();
-            } else {
-                alert('Трек добавлен в очередь');
+            await this.player.playNow(trackId);
+        });
+
+        document.getElementById('detail-add-to-playlist').addEventListener('click', async () => {
+            const playlists = await this.db.getAllPlaylists();
+            if (playlists.length === 0) {
+                alert('Сначала создайте плейлист');
+                return;
+            }
+            const listStr = playlists.map((p, i) => `${i+1}: ${p.name}`).join('\n');
+            const choice = prompt(`Выберите плейлист (введите номер):\n${listStr}`);
+            if (choice) {
+                const index = parseInt(choice) - 1;
+                if (index >= 0 && index < playlists.length) {
+                    const playlist = playlists[index];
+                    if (!playlist.tracks.includes(trackId)) {
+                        playlist.tracks.push(trackId);
+                        await this.db.updatePlaylist(playlist);
+                        alert('Трек добавлен в плейлист');
+                    } else {
+                        alert('Трек уже есть в плейлисте');
+                    }
+                }
             }
         });
+    }
+
+    // --- Методы для плейлистов ---
+
+    async renderPlaylists() {
+        const container = document.getElementById('playlists-list');
+        if (!container) return;
+        const playlists = await this.db.getAllPlaylists();
+        container.innerHTML = '';
+        for (let pl of playlists) {
+            const plDiv = document.createElement('div');
+            plDiv.className = 'playlist-item';
+            plDiv.innerHTML = `
+                <div class="playlist-header">
+                    <strong>${pl.name}</strong>
+                    <div class="playlist-actions">
+                        <button class="playlist-load" data-id="${pl.id}">▶ Загрузить в очередь</button>
+                        <button class="playlist-delete" data-id="${pl.id}">🗑️ Удалить</button>
+                    </div>
+                </div>
+                <div class="playlist-tracks" id="playlist-tracks-${pl.id}" style="display: none;"></div>
+            `;
+            // Обработчик для разворачивания списка треков
+            plDiv.querySelector('.playlist-header').addEventListener('click', async (e) => {
+                if (e.target.closest('button')) return;
+                const tracksDiv = plDiv.querySelector('.playlist-tracks');
+                if (tracksDiv.style.display === 'none') {
+                    tracksDiv.style.display = 'block';
+                    await this.renderPlaylistTracks(pl.id, tracksDiv);
+                } else {
+                    tracksDiv.style.display = 'none';
+                }
+            });
+            container.appendChild(plDiv);
+
+            // Обработчики кнопок
+            plDiv.querySelector('.playlist-load').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = e.target.dataset.id;
+                const playlist = await this.db.getPlaylist(id);
+                if (playlist && playlist.tracks.length) {
+                    await this.player.addToQueue(playlist.tracks);
+                }
+            });
+
+            plDiv.querySelector('.playlist-delete').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = e.target.dataset.id;
+                if (confirm('Удалить плейлист?')) {
+                    await this.db.deletePlaylist(id);
+                    this.renderPlaylists();
+                }
+            });
+        }
+    }
+
+    async renderPlaylistTracks(playlistId, container) {
+        const playlist = await this.db.getPlaylist(playlistId);
+        if (!playlist) return;
+        container.innerHTML = '';
+        for (let i = 0; i < playlist.tracks.length; i++) {
+            const trackId = playlist.tracks[i];
+            const track = await this.db.getTrack(trackId);
+            if (!track) continue;
+            const trackDiv = document.createElement('div');
+            trackDiv.className = 'playlist-track-item';
+            trackDiv.innerHTML = `
+                <span>${track.name}</span>
+                <div class="playlist-track-controls">
+                    <button class="playlist-track-up" data-playlist="${playlistId}" data-index="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="playlist-track-down" data-playlist="${playlistId}" data-index="${i}" ${i === playlist.tracks.length-1 ? 'disabled' : ''}>↓</button>
+                    <button class="playlist-track-remove" data-playlist="${playlistId}" data-index="${i}">✖</button>
+                </div>
+            `;
+            container.appendChild(trackDiv);
+        }
+
+        container.querySelectorAll('.playlist-track-up').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const playlistId = e.target.dataset.playlist;
+                const index = parseInt(e.target.dataset.index);
+                if (index > 0) {
+                    const playlist = await this.db.getPlaylist(playlistId);
+                    [playlist.tracks[index-1], playlist.tracks[index]] = [playlist.tracks[index], playlist.tracks[index-1]];
+                    await this.db.updatePlaylist(playlist);
+                    this.renderPlaylists();
+                }
+            });
+        });
+
+        container.querySelectorAll('.playlist-track-down').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const playlistId = e.target.dataset.playlist;
+                const index = parseInt(e.target.dataset.index);
+                const playlist = await this.db.getPlaylist(playlistId);
+                if (index < playlist.tracks.length - 1) {
+                    [playlist.tracks[index], playlist.tracks[index+1]] = [playlist.tracks[index+1], playlist.tracks[index]];
+                    await this.db.updatePlaylist(playlist);
+                    this.renderPlaylists();
+                }
+            });
+        });
+
+        container.querySelectorAll('.playlist-track-remove').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const playlistId = e.target.dataset.playlist;
+                const index = parseInt(e.target.dataset.index);
+                const playlist = await this.db.getPlaylist(playlistId);
+                playlist.tracks.splice(index, 1);
+                await this.db.updatePlaylist(playlist);
+                this.renderPlaylists();
+            });
+        });
+    }
+
+    createPlaylistDialog() {
+        const name = prompt('Введите название плейлиста:');
+        if (name) {
+            this.db.addPlaylist({ name, tracks: [] });
+            this.renderPlaylists();
+        }
     }
 };

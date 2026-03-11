@@ -10,6 +10,14 @@ var Player = class Player {
         this.ui = null;
         this.baseVolume = 80;
 
+        // Для визуализатора
+        this.audioCtx = null;
+        this.analyser = null;
+        this.source = null;
+        this.visualizerCallbacks = [];
+        this.visualizerActive = false;
+        this.rafId = null;
+
         this.initAudioEvents();
     }
 
@@ -22,9 +30,22 @@ var Player = class Player {
             if (!this.audio.duration) return;
             const progress = (this.audio.currentTime / this.audio.duration) * 100;
             document.getElementById('progress').value = progress;
+            if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
+                this.ui.popup.updateProgress(this.audio.currentTime, this.audio.duration);
+            }
         });
         this.audio.addEventListener('ended', () => this.next());
         this.audio.addEventListener('error', () => this.next());
+        this.audio.addEventListener('play', () => {
+            this.isPlaying = true;
+            if (this.ui) this.ui.setPlayPauseIcon(true);
+            this.startVisualizer();
+        });
+        this.audio.addEventListener('pause', () => {
+            this.isPlaying = false;
+            if (this.ui) this.ui.setPlayPauseIcon(false);
+            this.stopVisualizer();
+        });
     }
 
     async loadQueue() {
@@ -66,6 +87,10 @@ var Player = class Player {
         const pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
         if (this.ui) this.ui.updateCurrentTrack(track, pictureUrl);
 
+        if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
+            this.ui.popup.updateForTrack(track, pictureUrl, true);
+        }
+
         return true;
     }
 
@@ -95,15 +120,11 @@ var Player = class Player {
         }
         if (this.currentTrack) {
             this.audio.play();
-            this.isPlaying = true;
-            if (this.ui) this.ui.setPlayPauseIcon(true);
         }
     }
 
     pause() {
         this.audio.pause();
-        this.isPlaying = false;
-        if (this.ui) this.ui.setPlayPauseIcon(false);
     }
 
     togglePlay() {
@@ -182,6 +203,10 @@ var Player = class Player {
     }
 
     async addRandomFromLibrary() {
+        await this.addRandomTracks(1);
+    }
+
+    async addRandomTracks(count) {
         const allTracks = await this.db.getAllTracks();
         const availableTracks = [];
         for (let track of allTracks) {
@@ -194,8 +219,9 @@ var Player = class Player {
             alert('Нет доступных треков (все исключены)');
             return;
         }
-        const randomIndex = Math.floor(Math.random() * availableTracks.length);
-        await this.addToQueue([availableTracks[randomIndex].id]);
+        const shuffled = this.shuffleArray([...availableTracks]);
+        const selected = shuffled.slice(0, count).map(t => t.id);
+        await this.addToQueue(selected);
     }
 
     setVolume(percent) {
@@ -205,11 +231,81 @@ var Player = class Player {
         } else {
             this.audio.volume = this.baseVolume / 100;
         }
+        if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
+            document.getElementById('popup-volume').value = percent;
+        }
     }
 
     seek(percent) {
         if (this.audio.duration) {
             this.audio.currentTime = (percent / 100) * this.audio.duration;
         }
+    }
+
+    // ---- Новый метод для немедленного воспроизведения ----
+    async playNow(trackId) {
+        // Очищаем очередь и устанавливаем текущий трек
+        this.queue = [trackId];
+        this.currentIndex = 0;
+        await this.db.setQueue(this.queue);
+        if (this.ui) this.ui.renderQueue(this.queue);
+        
+        // Загружаем и начинаем воспроизведение
+        await this.loadTrack(trackId);
+        this.play();
+    }
+
+    // ---- Визуализатор ----
+    initAudioContext() {
+        if (this.audioCtx) return;
+        try {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            this.analyser = this.audioCtx.createAnalyser();
+            this.analyser.fftSize = 256;
+            this.source = this.audioCtx.createMediaElementSource(this.audio);
+            this.source.connect(this.analyser);
+            this.analyser.connect(this.audioCtx.destination);
+        } catch (e) {
+            console.error('Web Audio API not supported', e);
+        }
+    }
+
+    startVisualizer() {
+        if (!this.analyser) {
+            this.initAudioContext();
+        }
+        if (this.visualizerActive || !this.analyser) return;
+        this.visualizerActive = true;
+        this.updateVisualizer();
+    }
+
+    stopVisualizer() {
+        this.visualizerActive = false;
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        this.visualizerCallbacks.forEach(cb => cb(null));
+    }
+
+    updateVisualizer() {
+        if (!this.visualizerActive) return;
+        if (!this.analyser) return;
+
+        const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+        this.analyser.getByteFrequencyData(dataArray);
+
+        this.visualizerCallbacks.forEach(cb => cb(dataArray));
+
+        this.rafId = requestAnimationFrame(() => this.updateVisualizer());
+    }
+
+    registerVisualizerCallback(callback) {
+        this.visualizerCallbacks.push(callback);
+    }
+
+    unregisterVisualizerCallback(callback) {
+        const index = this.visualizerCallbacks.indexOf(callback);
+        if (index !== -1) this.visualizerCallbacks.splice(index, 1);
     }
 };
