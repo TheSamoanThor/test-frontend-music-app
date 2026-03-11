@@ -2,6 +2,8 @@ var FileHandler = class FileHandler {
     constructor(db) {
         this.db = db;
         this.isFileSystemAccessSupported = 'showDirectoryPicker' in window;
+        // Расширения аудиофайлов для дополнительной проверки
+        this.audioExtensions = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.wma', '.opus'];
     }
 
     async pickDirectory() {
@@ -21,10 +23,16 @@ var FileHandler = class FileHandler {
 
     async processDirectory(dirHandle, path = '') {
         let tracks = [];
+        const addPromises = [];
+
         for await (const entry of dirHandle.values()) {
             if (entry.kind === 'file') {
                 const file = await entry.getFile();
-                if (file.type.startsWith('audio/')) {
+                // Проверка: аудио по MIME-типу или по расширению
+                const isAudio = file.type.startsWith('audio/') || 
+                    this.audioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+                
+                if (isAudio) {
                     const id = utils.generateId();
                     const track = {
                         id,
@@ -33,17 +41,24 @@ var FileHandler = class FileHandler {
                         handle: entry,
                         duration: 0
                     };
-                    this.getAudioDuration(file).then(duration => {
-                        track.duration = duration;
-                        this.db.addTrack(track);
-                    });
                     tracks.push(track);
+                    
+                    // Создаём промис для асинхронного получения длительности и добавления в БД
+                    const addPromise = this.getAudioDuration(file).then(duration => {
+                        track.duration = duration;
+                        return this.db.addTrack(track);
+                    });
+                    addPromises.push(addPromise);
                 }
             } else if (entry.kind === 'directory') {
                 const subTracks = await this.processDirectory(entry, path + '/' + entry.name);
                 tracks = tracks.concat(subTracks);
+                // Промисы из поддиректорий уже были обработаны внутри рекурсивного вызова
             }
         }
+
+        // Ждём завершения всех операций добавления для текущей директории
+        await Promise.all(addPromises);
         return tracks;
     }
 
@@ -55,7 +70,10 @@ var FileHandler = class FileHandler {
                 resolve(audio.duration);
                 URL.revokeObjectURL(audio.src);
             });
-            audio.addEventListener('error', () => resolve(0));
+            audio.addEventListener('error', () => {
+                resolve(0); // если не удалось определить длительность
+                URL.revokeObjectURL(audio.src);
+            });
         });
     }
 
@@ -68,6 +86,7 @@ var FileHandler = class FileHandler {
             input.onchange = async (e) => {
                 const files = Array.from(e.target.files);
                 const tracks = [];
+                const addPromises = [];
                 for (let file of files) {
                     const id = utils.generateId();
                     const track = {
@@ -77,12 +96,14 @@ var FileHandler = class FileHandler {
                         file: file,
                         duration: 0
                     };
-                    this.getAudioDuration(file).then(d => {
-                        track.duration = d;
-                        this.db.addTrack(track);
-                    });
                     tracks.push(track);
+                    const addPromise = this.getAudioDuration(file).then(d => {
+                        track.duration = d;
+                        return this.db.addTrack(track);
+                    });
+                    addPromises.push(addPromise);
                 }
+                await Promise.all(addPromises);
                 resolve(tracks);
             };
             input.click();
@@ -94,7 +115,6 @@ var FileHandler = class FileHandler {
             try {
                 return await track.handle.getFile();
             } catch (err) {
-                // Если ошибка связана с отсутствием разрешения, пробуем запросить
                 if (err.name === 'NotAllowedError' && track.handle.requestPermission) {
                     try {
                         const permission = await track.handle.requestPermission({ mode: 'read' });
@@ -112,5 +132,32 @@ var FileHandler = class FileHandler {
             return track.file;
         }
         return null;
+    }
+
+    async getPictureBlobUrl(file) {
+        if (!file) return null;
+
+        return new Promise((resolve) => {
+            jsmediatags.read(file, {
+                onSuccess: (tag) => {
+                    const pictures = tag.tags.picture;
+                    if (pictures && pictures.data) {
+                        let data = pictures.data;
+                        if (data instanceof Array) {
+                            data = new Uint8Array(data);
+                        }
+                        const blob = new Blob([data], { type: pictures.format });
+                        const url = URL.createObjectURL(blob);
+                        resolve(url);
+                    } else {
+                        resolve(null);
+                    }
+                },
+                onError: (error) => {
+                    console.warn('Не удалось прочитать метаданные:', error);
+                    resolve(null);
+                }
+            });
+        });
     }
 };

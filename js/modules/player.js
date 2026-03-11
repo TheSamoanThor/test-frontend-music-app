@@ -62,7 +62,10 @@ var Player = class Player {
         await this.updateEffectiveVolume();
 
         if (this.isPlaying) this.audio.play();
-        if (this.ui) this.ui.updateCurrentTrack(track);
+
+        const pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
+        if (this.ui) this.ui.updateCurrentTrack(track, pictureUrl);
+
         return true;
     }
 

@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Sortable для drag & drop очереди -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Библиотека для чтения метаданных (обложки) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -115,6 +117,11 @@
         </main>
 
         <footer class="player-bar">
+            <div class="player-cover">
+                <img id="current-track-cover" src="" alt="cover">
+                <canvas id="player-visualizer" width="50" height="50" style="display: none;"></canvas>
+                <span class="no-cover">🎵</span>
+            </div>
             <div class="player-info">
                 <span id="current-track-name">🎵 Не выбрано</span>
             </div>

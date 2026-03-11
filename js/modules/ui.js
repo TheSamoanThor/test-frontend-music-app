@@ -6,6 +6,8 @@ var UI = class UI {
         this.themeManager = themeManager;
         this.currentFilterTags = [];
         this.searchTerm = '';
+        this.currentPictureUrl = null;
+        this.detailPictureUrl = null;
 
         this.initEventListeners();
     }
@@ -53,7 +55,6 @@ var UI = class UI {
         document.getElementById('clear-queue').addEventListener('click', () => this.player.clearQueue());
         document.getElementById('add-random').addEventListener('click', () => this.player.addRandomFromLibrary());
 
-        // Глобальный обработчик для удаления тегов и правил громкости
         document.addEventListener('click', async (e) => {
             if (e.target.classList.contains('delete-tag-volume')) {
                 const tag = e.target.dataset.tag;
@@ -70,7 +71,6 @@ var UI = class UI {
                 if (window.location.hash.includes(`track/${trackId}`)) {
                     this.loadTrackDetail(trackId);
                 }
-                // Если это текущий трек, обновить громкость
                 if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
                     await this.player.updateEffectiveVolume();
                 }
@@ -90,18 +90,16 @@ var UI = class UI {
             }
         });
 
-        // Drag & drop из библиотеки в очередь (исправлено дублирование)
         const queueList = document.getElementById('queue-list');
         if (queueList) {
             queueList.addEventListener('dragover', (e) => e.preventDefault());
-            let dropPending = false; // защита от множественных срабатываний
+            let dropPending = false;
             queueList.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 if (dropPending) return;
                 dropPending = true;
                 const trackId = e.dataTransfer.getData('text/plain');
                 if (trackId) {
-                    // Проверяем, нет ли уже такого трека в очереди (опционально, можно убрать если нужны дубликаты)
                     if (!this.player.queue.includes(trackId)) {
                         await this.player.addToQueue([trackId]);
                     } else {
@@ -126,7 +124,6 @@ var UI = class UI {
         const allTracks = await this.db.getAllTracks();
         let filtered = allTracks;
 
-        // Фильтр по тегам (частичное совпадение начала тега)
         if (this.currentFilterTags.length > 0) {
             const trackTagPromises = allTracks.map(async track => ({
                 track,
@@ -143,7 +140,6 @@ var UI = class UI {
                 .map(item => item.track);
         }
 
-        // Фильтр по имени
         if (this.searchTerm) {
             filtered = filtered.filter(track => track.name.toLowerCase().includes(this.searchTerm));
         }
@@ -244,7 +240,7 @@ var UI = class UI {
             if (!track) continue;
             const li = document.createElement('li');
             li.className = 'queue-item';
-            li.dataset.id = track.id;  // обязательно для Sortable
+            li.dataset.id = track.id;
             li.innerHTML = `
                 <span>${track.name}</span>
                 <div class="queue-controls">
@@ -256,7 +252,6 @@ var UI = class UI {
             listEl.appendChild(li);
         }
 
-        // Обработчики для кнопок (оставляем как есть)
         document.querySelectorAll('.queue-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const index = parseInt(e.target.dataset.index);
@@ -290,13 +285,52 @@ var UI = class UI {
             });
         });
 
-        // После полной перерисовки очереди переинициализируем Drag & Drop
         DragDrop.initQueue(this);
     }
 
-    updateCurrentTrack(track) {
-        const el = document.getElementById('current-track-name');
-        el.textContent = track ? `🎵 ${track.name}` : '🎵 Не выбрано';
+    updateCurrentTrack(track, pictureUrl) {
+        const nameEl = document.getElementById('current-track-name');
+        nameEl.textContent = track ? `🎵 ${track.name}` : '🎵 Не выбрано';
+
+        const coverImg = document.getElementById('current-track-cover');
+        const visualizerCanvas = document.getElementById('player-visualizer');
+        const noCoverSpan = document.querySelector('.no-cover');
+
+        if (this.currentPictureUrl) {
+            URL.revokeObjectURL(this.currentPictureUrl);
+            this.currentPictureUrl = null;
+        }
+
+        if (pictureUrl) {
+            coverImg.src = pictureUrl;
+            coverImg.style.display = 'block';
+            visualizerCanvas.style.display = 'none';
+            noCoverSpan.style.display = 'none';
+            this.currentPictureUrl = pictureUrl;
+            if (this.player) {
+                this.player.stopVisualizer();
+            }
+            coverImg.onerror = () => {
+                coverImg.style.display = 'none';
+                visualizerCanvas.style.display = 'block';
+                noCoverSpan.style.display = 'none';
+                if (this.currentPictureUrl) {
+                    URL.revokeObjectURL(this.currentPictureUrl);
+                    this.currentPictureUrl = null;
+                }
+                if (this.player && this.player.isPlaying) {
+                    this.player.startVisualizer();
+                }
+            };
+        } else {
+            coverImg.src = '';
+            coverImg.style.display = 'none';
+            visualizerCanvas.style.display = 'block';
+            noCoverSpan.style.display = 'none';
+            if (this.player && this.player.isPlaying) {
+                this.player.startVisualizer();
+            }
+        }
     }
 
     setPlayPauseIcon(playing) {
@@ -465,12 +499,24 @@ var UI = class UI {
         const tags = await this.db.getTags(trackId);
         const isExcluded = tags.includes('🚫 excluded');
 
+        const file = await this.fileHandler.getFileForTrack(track);
+        let pictureUrl = null;
+        if (file) {
+            pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
+        }
+
         const container = document.getElementById('track-detail-container');
         const tagsHtml = tags.length > 0 
             ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${trackId}" data-tag="${t}">✖</button></span>`).join(' ')
             : 'нет';
+
+        const coverHtml = pictureUrl 
+            ? `<img src="${pictureUrl}" alt="cover" class="track-detail-cover" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`
+            : '<div class="track-detail-cover no-cover">🎵</div>';
+
         container.innerHTML = `
             <div class="track-detail">
+                ${coverHtml}
                 <h3>${track.name}</h3>
                 <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
                 <p><strong>Путь:</strong> ${track.path || 'неизвестно'}</p>
@@ -485,6 +531,14 @@ var UI = class UI {
                 </div>
             </div>
         `;
+
+        if (this.detailPictureUrl) {
+            URL.revokeObjectURL(this.detailPictureUrl);
+            this.detailPictureUrl = null;
+        }
+        if (pictureUrl) {
+            this.detailPictureUrl = pictureUrl;
+        }
 
         document.getElementById('detail-add-tag').addEventListener('click', async () => {
             const newTag = document.getElementById('detail-new-tag').value.trim();
