@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Player с тегами и очередью</title>
+    <title>Music Player</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Sortable для drag & drop очереди -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -154,17 +154,28 @@
             <h3 id="popup-track-title">Название трека</h3>
             <p id="popup-track-artist"></p>
             <div id="popup-tags" class="popup-tags"></div>
-            <div class="popup-progress">
-                <input type="range" id="popup-progress" value="0" min="0" max="100" step="0.1">
-                <span id="popup-time">0:00 / 0:00</span>
+            <!-- Новые элементы -->
+            <p><strong>Длительность:</strong> <span id="popup-duration"></span></p>
+            <p><strong>Путь:</strong> <span id="popup-path"></span></p>
+            <div class="popup-tag-add">
+                <input type="text" id="popup-new-tag" placeholder="новый тег">
+                <button id="popup-add-tag">➕ Добавить тег</button>
             </div>
-            <div class="popup-volume">
-                <input type="range" id="popup-volume" value="80" min="0" max="100">
+            <!-- Контейнер для элементов управления воспроизведением (виден только для текущего трека) -->
+            <div id="popup-playback-controls">
+                <div class="popup-progress">
+                    <input type="range" id="popup-progress" value="0" min="0" max="100" step="0.1">
+                    <span id="popup-time">0:00 / 0:00</span>
+                </div>
+                <div class="popup-volume">
+                    <input type="range" id="popup-volume" value="80" min="0" max="100">
+                </div>
             </div>
             <div class="popup-actions">
                 <button id="popup-play-pause">▶️</button>
                 <button id="popup-add-to-queue">➕ В очередь</button>
                 <button id="popup-add-to-playlist">📋 В плейлист</button>
+                <button id="popup-toggle-exclude">🚫 Исключить</button>
             </div>
         </div>
     </div>

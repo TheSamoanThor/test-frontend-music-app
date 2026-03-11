@@ -29,6 +29,14 @@ var PopupManager = class PopupManager {
         this.addToQueueBtn = document.getElementById('popup-add-to-queue');
         this.addToPlaylistBtn = document.getElementById('popup-add-to-playlist');
         this.closeBtn = this.popup.querySelector('.close-popup');
+        
+        // Новые элементы
+        this.durationSpan = document.getElementById('popup-duration');
+        this.pathSpan = document.getElementById('popup-path');
+        this.newTagInput = document.getElementById('popup-new-tag');
+        this.addTagBtn = document.getElementById('popup-add-tag');
+        this.toggleExcludeBtn = document.getElementById('popup-toggle-exclude');
+        this.playbackControls = document.getElementById('popup-playback-controls');
     }
 
     initEvents() {
@@ -92,6 +100,47 @@ var PopupManager = class PopupManager {
                 }
             }
         });
+
+        // Новые обработчики
+        this.addTagBtn.addEventListener('click', async () => {
+            if (!this.currentTrackId) return;
+            const newTag = this.newTagInput.value.trim();
+            if (newTag) {
+                const tags = await this.db.getTags(this.currentTrackId);
+                if (!tags.includes(newTag)) {
+                    tags.push(newTag);
+                    await this.db.setTags(this.currentTrackId, tags);
+                    // Обновить отображение тегов
+                    this.tagsEl.innerHTML = tags.map(t => `<span class="tag-badge">${t}</span>`).join(' ');
+                    this.newTagInput.value = '';
+                    // Если это текущий трек, обновить громкость
+                    if (this.isOpenForCurrent && this.player.currentTrack && this.player.currentTrack.id === this.currentTrackId) {
+                        await this.player.updateEffectiveVolume();
+                    }
+                }
+            }
+        });
+
+        this.toggleExcludeBtn.addEventListener('click', async () => {
+            if (!this.currentTrackId) return;
+            const tags = await this.db.getTags(this.currentTrackId);
+            const excludedTag = '🚫 excluded';
+            if (tags.includes(excludedTag)) {
+                const newTags = tags.filter(t => t !== excludedTag);
+                await this.db.setTags(this.currentTrackId, newTags);
+                this.toggleExcludeBtn.textContent = '🚫 Исключить';
+            } else {
+                tags.push(excludedTag);
+                await this.db.setTags(this.currentTrackId, tags);
+                this.toggleExcludeBtn.textContent = '✅ Вернуть в случайный выбор';
+            }
+            // Обновить теги в попапе
+            const updatedTags = await this.db.getTags(this.currentTrackId);
+            this.tagsEl.innerHTML = updatedTags.map(t => `<span class="tag-badge">${t}</span>`).join(' ');
+            if (this.isOpenForCurrent && this.player.currentTrack && this.player.currentTrack.id === this.currentTrackId) {
+                await this.player.updateEffectiveVolume();
+            }
+        });
     }
 
     async showForTrack(trackId, isCurrent = false) {
@@ -111,8 +160,9 @@ var PopupManager = class PopupManager {
 
         this.updateForTrack(track, pictureUrl, isCurrent);
 
-        // Если это текущий трек, подписываемся на обновления прогресса и громкости
+        // Управление видимостью элементов воспроизведения
         if (isCurrent) {
+            this.playbackControls.classList.remove('hidden');
             this.progressInput.disabled = false;
             this.volumeInput.disabled = false;
             this.playPauseBtn.disabled = false;
@@ -123,6 +173,7 @@ var PopupManager = class PopupManager {
                 this.startVisualizer();
             }
         } else {
+            this.playbackControls.classList.add('hidden');
             this.progressInput.disabled = true;
             this.volumeInput.disabled = true;
             this.playPauseBtn.disabled = false;
@@ -147,9 +198,13 @@ var PopupManager = class PopupManager {
     updateForTrack(track, pictureUrl, isCurrent) {
         this.titleEl.textContent = track.name;
         this.artistEl.textContent = '';
+        this.durationSpan.textContent = utils.formatTime(track.duration);
+        this.pathSpan.textContent = track.path || 'неизвестно';
 
         this.db.getTags(track.id).then(tags => {
             this.tagsEl.innerHTML = tags.map(t => `<span class="tag-badge">${t}</span>`).join(' ');
+            const isExcluded = tags.includes('🚫 excluded');
+            this.toggleExcludeBtn.textContent = isExcluded ? '✅ Вернуть в случайный выбор' : '🚫 Исключить';
         });
 
         if (pictureUrl) {
@@ -200,6 +255,7 @@ var PopupManager = class PopupManager {
         this.player.registerVisualizerCallback(this.visualizerCallback);
     }
 
+    // Улучшенный визуализатор с частотным спектром
     drawVisualizer(dataArray) {
         const canvas = this.visualizerCanvas;
         const ctx = canvas.getContext('2d');
@@ -207,15 +263,26 @@ var PopupManager = class PopupManager {
         const height = canvas.height;
         ctx.clearRect(0, 0, width, height);
 
-        const bass = dataArray.slice(0, 10).reduce((a, b) => a + b, 0) / 10 / 255;
-        const lineY = height * (1 - bass * 0.8);
+        if (!dataArray) return;
 
-        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(0, lineY);
-        ctx.lineTo(width, lineY);
-        ctx.stroke();
+        const barCount = 30; // количество столбцов
+        const barWidth = width / barCount;
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#4a90e2';
+
+        for (let i = 0; i < barCount; i++) {
+            // Пропорциональный индекс в массиве данных
+            const dataIndex = Math.floor(i * dataArray.length / barCount);
+            const value = dataArray[dataIndex] / 255; // нормализация от 0 до 1
+            const barHeight = value * height * 0.8; // оставляем отступ сверху
+            const x = i * barWidth;
+            const y = height - barHeight;
+
+            ctx.fillStyle = primaryColor;
+            // Немного прозрачности для красоты
+            ctx.globalAlpha = 0.7 + 0.3 * value;
+            ctx.fillRect(x, y, barWidth - 1, barHeight);
+        }
+        ctx.globalAlpha = 1.0; // сброс
     }
 
     hide() {
@@ -229,5 +296,7 @@ var PopupManager = class PopupManager {
             URL.revokeObjectURL(this.pictureUrl);
             this.pictureUrl = null;
         }
+        // Очистить поле ввода тега
+        if (this.newTagInput) this.newTagInput.value = '';
     }
 };

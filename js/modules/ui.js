@@ -9,6 +9,7 @@ var UI = class UI {
         this.currentPictureUrl = null;
         this.detailPictureUrl = null;
         this.popup = null;
+        this.playerVisualizerCallback = null; // для визуализатора в плеере
 
         this.initEventListeners();
     }
@@ -118,6 +119,49 @@ var UI = class UI {
 
     initPopup(popup) {
         this.popup = popup;
+    }
+
+    // Регистрация визуализатора для плеера
+    registerPlayerVisualizer() {
+        if (this.player) {
+            this.playerVisualizerCallback = (dataArray) => {
+                this.drawPlayerVisualizer(dataArray);
+            };
+            this.player.registerVisualizerCallback(this.playerVisualizerCallback);
+        }
+    }
+
+    // Отрисовка визуализатора на маленьком canvas плеера
+    drawPlayerVisualizer(dataArray) {
+        const canvas = document.getElementById('player-visualizer');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.clearRect(0, 0, width, height);
+        if (!dataArray) return;
+
+        const barCount = 8;
+        const barWidth = width / barCount;
+        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#4a90e2';
+
+        for (let i = 0; i < barCount; i++) {
+            const start = Math.floor(i * dataArray.length / barCount);
+            const end = Math.floor((i + 1) * dataArray.length / barCount);
+            let sum = 0;
+            for (let j = start; j < end; j++) {
+                sum += dataArray[j];
+            }
+            const avg = sum / (end - start) / 255;
+            const barHeight = avg * height;
+            const x = i * barWidth;
+            const y = height - barHeight;
+
+            ctx.fillStyle = primaryColor;
+            ctx.globalAlpha = 0.7 + 0.3 * avg;
+            ctx.fillRect(x, y, barWidth - 1, barHeight);
+        }
+        ctx.globalAlpha = 1.0;
     }
 
     syncFilterInput() {

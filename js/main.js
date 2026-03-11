@@ -14,6 +14,9 @@
     const popup = new PopupManager(ui, player, fileHandler, db);
     ui.initPopup(popup);
 
+    // Регистрируем визуализатор для плеера
+    ui.registerPlayerVisualizer();
+
     DragDrop.initQueue(ui);
 
     await player.loadQueue();

@@ -1,5 +1,7 @@
 var Player = class Player {
     constructor(db, fileHandler) {
+        if (!db) throw new Error('Database instance required');
+        if (!fileHandler) throw new Error('FileHandler instance required');
         this.db = db;
         this.fileHandler = fileHandler;
         this.audio = new Audio();
@@ -8,7 +10,8 @@ var Player = class Player {
         this.currentIndex = -1;
         this.isPlaying = false;
         this.ui = null;
-        this.baseVolume = 80;
+        this.baseVolume = 80; // 0-100
+        this.currentObjectUrl = null; // для отслеживания созданных URL
 
         // Для визуализатора
         this.audioCtx = null;
@@ -29,18 +32,25 @@ var Player = class Player {
         this.audio.addEventListener('timeupdate', () => {
             if (!this.audio.duration) return;
             const progress = (this.audio.currentTime / this.audio.duration) * 100;
-            document.getElementById('progress').value = progress;
+            const progressEl = document.getElementById('progress');
+            if (progressEl) progressEl.value = progress;
             if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
                 this.ui.popup.updateProgress(this.audio.currentTime, this.audio.duration);
             }
         });
+
         this.audio.addEventListener('ended', () => this.next());
-        this.audio.addEventListener('error', () => this.next());
+        this.audio.addEventListener('error', (e) => {
+            console.error('Audio error', e);
+            this.next();
+        });
+
         this.audio.addEventListener('play', () => {
             this.isPlaying = true;
             if (this.ui) this.ui.setPlayPauseIcon(true);
             this.startVisualizer();
         });
+
         this.audio.addEventListener('pause', () => {
             this.isPlaying = false;
             if (this.ui) this.ui.setPlayPauseIcon(false);
@@ -48,26 +58,49 @@ var Player = class Player {
         });
     }
 
+    /**
+     * Load queue from database and optionally start playing first track
+     */
     async loadQueue() {
-        this.queue = await this.db.getQueue();
-        if (this.ui) this.ui.renderQueue(this.queue);
-        if (this.queue.length > 0 && this.currentIndex === -1) {
-            this.currentIndex = 0;
-            await this.loadTrack(this.queue[0]);
+        try {
+            this.queue = await this.db.getQueue() || [];
+            if (this.ui) this.ui.renderQueue(this.queue);
+            if (this.queue.length > 0 && this.currentIndex === -1) {
+                this.currentIndex = 0;
+                await this.loadTrack(this.queue[0]);
+            }
+        } catch (err) {
+            console.error('Failed to load queue', err);
         }
     }
 
+    /**
+     * Load a track by ID into the audio element
+     * @param {string} trackId
+     * @returns {Promise<boolean>} success
+     */
     async loadTrack(trackId) {
         const track = await this.db.getTrack(trackId);
-        if (!track) return false;
+        if (!track) {
+            console.warn(`Track ${trackId} not found`);
+            return false;
+        }
+
+        // Освободить предыдущий объектный URL, если есть
+        if (this.currentObjectUrl) {
+            URL.revokeObjectURL(this.currentObjectUrl);
+            this.currentObjectUrl = null;
+        }
 
         const file = await this.fileHandler.getFileForTrack(track);
         if (!file) {
-            alert(`Не удалось загрузить файл: ${track.name}. Он будет удалён из очереди.`);
+            console.warn(`File not accessible for track: ${track.name} (${trackId})`);
+            // Удалить из очереди без алерта
             const index = this.queue.indexOf(trackId);
             if (index !== -1) {
                 await this.removeFromQueue(index);
             }
+            // Попробовать следующий трек, если есть
             if (this.queue.length > 0) {
                 if (this.currentIndex >= this.queue.length) this.currentIndex = 0;
                 return this.loadTrack(this.queue[this.currentIndex]);
@@ -77,16 +110,27 @@ var Player = class Player {
 
         this.currentTrack = track;
         const url = URL.createObjectURL(file);
+        this.currentObjectUrl = url;
         this.audio.src = url;
         this.audio.load();
 
+        // Обновить громкость согласно тегам
         await this.updateEffectiveVolume();
 
-        if (this.isPlaying) this.audio.play();
+        // Если плеер был в состоянии воспроизведения, продолжить
+        if (this.isPlaying) {
+            try {
+                await this.audio.play();
+            } catch (e) {
+                console.warn('Auto-play failed', e);
+            }
+        }
 
+        // Обновить UI: обложка и информация
         const pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
         if (this.ui) this.ui.updateCurrentTrack(track, pictureUrl);
 
+        // Обновить попап, если он открыт для этого трека
         if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
             this.ui.popup.updateForTrack(track, pictureUrl, true);
         }
@@ -94,23 +138,30 @@ var Player = class Player {
         return true;
     }
 
+    /**
+     * Update audio volume based on tags and base volume
+     */
     async updateEffectiveVolume() {
         if (!this.currentTrack) return;
-        const tags = await this.db.getTags(this.currentTrack.id);
-        let factor;
-        const volFactor = utils.extractVolumeFactorFromTags(tags);
-        if (volFactor !== null) {
-            factor = volFactor;
-        } else {
-            factor = 1.0;
-            for (let tag of tags) {
-                const vol = await this.db.getTagVolume(tag);
-                factor *= vol;
+        try {
+            const tags = await this.db.getTags(this.currentTrack.id) || [];
+            let factor;
+            const volFactor = utils.extractVolumeFactorFromTags(tags);
+            if (volFactor !== null) {
+                factor = volFactor;
+            } else {
+                factor = 1.0;
+                for (let tag of tags) {
+                    const vol = await this.db.getTagVolume(tag);
+                    factor *= vol;
+                }
+                factor = Math.min(2.0, Math.max(0.1, factor));
             }
-            factor = Math.min(2.0, Math.max(0.1, factor));
+            const effective = (this.baseVolume / 100) * factor;
+            this.audio.volume = Math.min(1, Math.max(0, effective));
+        } catch (err) {
+            console.error('Error updating volume', err);
         }
-        const effective = (this.baseVolume / 100) * factor;
-        this.audio.volume = Math.min(1, Math.max(0, effective));
     }
 
     async play() {
@@ -119,7 +170,11 @@ var Player = class Player {
             await this.loadTrack(this.queue[0]);
         }
         if (this.currentTrack) {
-            this.audio.play();
+            try {
+                await this.audio.play();
+            } catch (e) {
+                console.warn('Play failed', e);
+            }
         }
     }
 
@@ -135,14 +190,18 @@ var Player = class Player {
         if (this.queue.length === 0) return;
         this.currentIndex = (this.currentIndex + 1) % this.queue.length;
         await this.loadTrack(this.queue[this.currentIndex]);
-        if (this.isPlaying) this.audio.play();
+        if (this.isPlaying) {
+            try { await this.audio.play(); } catch (e) { console.warn('Auto-play after next failed', e); }
+        }
     }
 
     async prev() {
         if (this.queue.length === 0) return;
         this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
         await this.loadTrack(this.queue[this.currentIndex]);
-        if (this.isPlaying) this.audio.play();
+        if (this.isPlaying) {
+            try { await this.audio.play(); } catch (e) { console.warn('Auto-play after prev failed', e); }
+        }
     }
 
     async addToQueue(trackIds) {
@@ -232,7 +291,8 @@ var Player = class Player {
             this.audio.volume = this.baseVolume / 100;
         }
         if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
-            document.getElementById('popup-volume').value = percent;
+            const popupVolume = document.getElementById('popup-volume');
+            if (popupVolume) popupVolume.value = percent;
         }
     }
 
@@ -289,8 +349,7 @@ var Player = class Player {
     }
 
     updateVisualizer() {
-        if (!this.visualizerActive) return;
-        if (!this.analyser) return;
+        if (!this.visualizerActive || !this.analyser) return;
 
         const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
         this.analyser.getByteFrequencyData(dataArray);
@@ -301,7 +360,9 @@ var Player = class Player {
     }
 
     registerVisualizerCallback(callback) {
-        this.visualizerCallbacks.push(callback);
+        if (typeof callback === 'function') {
+            this.visualizerCallbacks.push(callback);
+        }
     }
 
     unregisterVisualizerCallback(callback) {

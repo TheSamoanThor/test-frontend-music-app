@@ -284,7 +284,7 @@ h2 {
     font-size: 0.8rem;
 }
 
-/* Popup стили */
+/* Popup стили — обновлены для соответствия странице деталей */
 .popup {
     position: fixed;
     top: 0;
@@ -307,12 +307,13 @@ h2 {
     color: var(--text-color);
     border-radius: var(--border-radius);
     padding: 2rem;
-    max-width: 400px;
+    max-width: 500px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
     position: relative;
     box-shadow: var(--shadow);
+    text-align: center;
 }
 
 .close-popup {
@@ -359,6 +360,51 @@ h2 {
     display: flex;
     flex-wrap: wrap;
     gap: 0.3rem;
+    justify-content: center;
+}
+
+/* Стили для новых элементов */
+.popup-content p {
+    margin: 0.3rem 0;
+    font-size: 0.95rem;
+}
+
+.popup-content p strong {
+    color: var(--primary-color);
+}
+
+.popup-tag-add {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    justify-content: center;
+}
+
+.popup-tag-add input {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    flex: 1;
+}
+
+.popup-tag-add button {
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+/* Контейнер для элементов управления воспроизведением */
+#popup-playback-controls {
+    margin: 1rem 0;
+}
+
+#popup-playback-controls.hidden {
+    display: none;
 }
 
 .popup-progress,
@@ -376,9 +422,10 @@ h2 {
 
 .popup-actions {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
     flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-top: 1rem;
 }
 
 .popup-actions button {
@@ -679,4 +726,11 @@ h2 {
     border-radius: var(--border-radius);
     background-color: var(--bg-color);
     color: var(--text-color);
+}
+#player-visualizer {
+    display: block;
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
 }
