@@ -8,8 +8,7 @@ var UI = class UI {
         this.searchTerm = '';
         this.currentPictureUrl = null;
         this.detailPictureUrl = null;
-        this.popup = null;
-        this.playerVisualizerCallback = null; // для визуализатора в плеере
+        this.playerVisualizerCallback = null;
 
         this.initEventListeners();
     }
@@ -58,8 +57,11 @@ var UI = class UI {
         document.getElementById('add-random').addEventListener('click', () => this.player.addRandomFromLibrary());
         document.getElementById('add-random-10').addEventListener('click', () => this.player.addRandomTracks(10));
 
+        // Глобальный обработчик кликов для удаления тегов и перехода на страницу трека
         document.addEventListener('click', async (e) => {
+            // Удаление тега
             if (e.target.classList.contains('remove-tag-btn')) {
+                e.stopPropagation(); // предотвращаем всплытие
                 const trackId = e.target.dataset.trackId;
                 const tagToRemove = e.target.dataset.tag;
                 const tags = await this.db.getTags(trackId);
@@ -73,8 +75,13 @@ var UI = class UI {
                     await this.player.updateEffectiveVolume();
                 }
             }
-            // Клик по треку в библиотеке -> переход на страницу деталей
-            else if (e.target.closest('.track-item') && !e.target.closest('button')) {
+            // Переход на страницу деталей трека при клике на элемент трека,
+            // но не на кнопки, не на поля ввода и не на другие интерактивные элементы
+            else if (e.target.closest('.track-item') && 
+                     !e.target.closest('button') && 
+                     !e.target.closest('input') && 
+                     !e.target.closest('select') && 
+                     !e.target.closest('textarea')) {
                 const trackItem = e.target.closest('.track-item');
                 const trackId = trackItem.querySelector('.add-tag-btn')?.dataset.id;
                 if (trackId) {
@@ -103,11 +110,11 @@ var UI = class UI {
             });
         }
 
-        // Клик по плашке текущего трека (футер)
+        // Клик по плашке текущего трека (футер) -> переход на страницу деталей этого трека
         document.getElementById('player-bar').addEventListener('click', (e) => {
             if (e.target.closest('button') || e.target.closest('input')) return;
             if (this.player.currentTrack) {
-                this.popup.showForCurrentTrack();
+                Router.navigate('track', this.player.currentTrack.id);
             }
         });
 
@@ -115,13 +122,30 @@ var UI = class UI {
         document.getElementById('create-playlist')?.addEventListener('click', () => {
             this.createPlaylistDialog();
         });
+
+        // Обработчики для элементов управления на странице деталей
+        const trackPlayPause = document.getElementById('track-play-pause');
+        if (trackPlayPause) {
+            trackPlayPause.addEventListener('click', () => this.player.togglePlay());
+        }
+        const trackPrev = document.getElementById('track-prev');
+        if (trackPrev) {
+            trackPrev.addEventListener('click', () => this.player.prev());
+        }
+        const trackNext = document.getElementById('track-next');
+        if (trackNext) {
+            trackNext.addEventListener('click', () => this.player.next());
+        }
+        const trackProgress = document.getElementById('track-progress');
+        if (trackProgress) {
+            trackProgress.addEventListener('input', (e) => this.player.seek(e.target.value));
+        }
+        const trackVolume = document.getElementById('track-volume');
+        if (trackVolume) {
+            trackVolume.addEventListener('input', (e) => this.player.setVolume(e.target.value));
+        }
     }
 
-    initPopup(popup) {
-        this.popup = popup;
-    }
-
-    // Регистрация визуализатора для плеера
     registerPlayerVisualizer() {
         if (this.player) {
             this.playerVisualizerCallback = (dataArray) => {
@@ -131,7 +155,6 @@ var UI = class UI {
         }
     }
 
-    // Отрисовка визуализатора на маленьком canvas плеера
     drawPlayerVisualizer(dataArray) {
         const canvas = document.getElementById('player-visualizer');
         if (!canvas) return;
@@ -228,6 +251,7 @@ var UI = class UI {
             listEl.appendChild(li);
         }
 
+        // Добавляем обработчики для кнопок внутри каждого трека
         document.querySelectorAll('.add-tag-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -281,7 +305,6 @@ var UI = class UI {
             });
         });
 
-        // Новая кнопка "▶ Сейчас"
         document.querySelectorAll('.play-immediate-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -290,7 +313,6 @@ var UI = class UI {
             });
         });
 
-        // Новая кнопка "📋 В плейлист"
         document.querySelectorAll('.add-to-playlist-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -427,10 +449,46 @@ var UI = class UI {
                 this.player.startVisualizer();
             }
         }
+
+        if (window.location.hash.includes(`track/${track?.id}`)) {
+            this.updateTrackPlaybackControls();
+        }
     }
 
     setPlayPauseIcon(playing) {
         document.getElementById('play-pause').textContent = playing ? '⏸️' : '▶️';
+        const trackPlayPause = document.getElementById('track-play-pause');
+        if (trackPlayPause) trackPlayPause.textContent = playing ? '⏸️' : '▶️';
+    }
+
+    updateTrackPlaybackControls() {
+        const controls = document.getElementById('track-playback-controls');
+        if (!controls) return;
+        if (this.player.currentTrack && window.location.hash.includes(`track/${this.player.currentTrack.id}`)) {
+            controls.classList.remove('hidden');
+            document.getElementById('track-volume').value = this.player.baseVolume;
+            this.setPlayPauseIcon(this.player.isPlaying);
+            const updateProgress = () => {
+                if (this.player.audio.duration) {
+                    const progress = (this.player.audio.currentTime / this.player.audio.duration) * 100;
+                    document.getElementById('track-progress').value = progress;
+                    document.getElementById('track-time').textContent = 
+                        `${utils.formatTime(this.player.audio.currentTime)} / ${utils.formatTime(this.player.audio.duration)}`;
+                }
+            };
+            this.player.audio.addEventListener('timeupdate', updateProgress);
+            if (this.trackProgressHandler) {
+                this.player.audio.removeEventListener('timeupdate', this.trackProgressHandler);
+            }
+            this.trackProgressHandler = updateProgress;
+            this.player.audio.addEventListener('timeupdate', this.trackProgressHandler);
+        } else {
+            controls.classList.add('hidden');
+            if (this.trackProgressHandler) {
+                this.player.audio.removeEventListener('timeupdate', this.trackProgressHandler);
+                this.trackProgressHandler = null;
+            }
+        }
     }
 
     async exportData() {
@@ -668,9 +726,9 @@ var UI = class UI {
                 }
             }
         });
-    }
 
-    // --- Методы для плейлистов ---
+        this.updateTrackPlaybackControls();
+    }
 
     async renderPlaylists() {
         const container = document.getElementById('playlists-list');
@@ -690,7 +748,6 @@ var UI = class UI {
                 </div>
                 <div class="playlist-tracks" id="playlist-tracks-${pl.id}" style="display: none;"></div>
             `;
-            // Обработчик для разворачивания списка треков
             plDiv.querySelector('.playlist-header').addEventListener('click', async (e) => {
                 if (e.target.closest('button')) return;
                 const tracksDiv = plDiv.querySelector('.playlist-tracks');
@@ -703,7 +760,6 @@ var UI = class UI {
             });
             container.appendChild(plDiv);
 
-            // Обработчики кнопок
             plDiv.querySelector('.playlist-load').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const id = e.target.dataset.id;
