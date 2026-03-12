@@ -265,7 +265,7 @@ var Player = class Player {
         await this.addRandomTracks(1);
     }
 
-    async addRandomTracks(count) {
+    async addRandomTracks(count, allowDuplicates = true) {
         const allTracks = await this.db.getAllTracks();
         const availableTracks = [];
         for (let track of allTracks) {
@@ -278,8 +278,25 @@ var Player = class Player {
             alert('Нет доступных треков (все исключены)');
             return;
         }
-        const shuffled = this.shuffleArray([...availableTracks]);
-        const selected = shuffled.slice(0, count).map(t => t.id);
+
+        const selected = [];
+        if (allowDuplicates) {
+            // Выбор с возможными повторениями
+            for (let i = 0; i < count; i++) {
+                const randomIndex = Math.floor(Math.random() * availableTracks.length);
+                selected.push(availableTracks[randomIndex].id);
+            }
+        } else {
+            // Уникальный выбор (без повторений)
+            if (count > availableTracks.length) {
+                count = availableTracks.length; // не запрашивать больше, чем есть
+            }
+            const shuffled = this.shuffleArray([...availableTracks]);
+            for (let i = 0; i < count; i++) {
+                selected.push(shuffled[i].id);
+            }
+        }
+
         await this.addToQueue(selected);
     }
 

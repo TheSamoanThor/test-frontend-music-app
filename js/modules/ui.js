@@ -450,7 +450,18 @@ var UI = class UI {
             }
         }
 
-        if (window.location.hash.includes(`track/${track?.id}`)) {
+        // Логика для страницы деталей трека
+        if (window.location.hash.startsWith('#track/')) {
+            const currentTrackIdInHash = window.location.hash.split('/')[1];
+            if (currentTrackIdInHash !== track.id) {
+                // Если открыта страница другого трека, перенаправляем на новый текущий
+                Router.navigate('track', track.id);
+            } else {
+                // Если открыта страница этого же трека, просто обновляем содержимое
+                this.loadTrackDetail(track.id);
+            }
+        } else {
+            // Если не на странице деталей, обновляем блок управления (он скрыт, но на всякий случай)
             this.updateTrackPlaybackControls();
         }
     }
