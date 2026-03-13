@@ -9,6 +9,11 @@
     --font-family: 'Segoe UI', system-ui, sans-serif;
     --shadow: 0 2px 8px rgba(0,0,0,0.1);
     --border-radius: 8px;
+
+    /* Scrollbar variables */
+    --scrollbar-track: var(--bg-color);
+    --scrollbar-thumb: var(--border-color);
+    --scrollbar-thumb-hover: var(--primary-color);
 }
 
 * {
@@ -25,6 +30,28 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* Scrollbar styles (WebKit) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* Scrollbar (Firefox) */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 #app {
@@ -166,7 +193,7 @@ h2 {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    cursor: pointer; /* указывает на кликабельность */
+    cursor: pointer;
 }
 
 .track-tags {
@@ -284,7 +311,7 @@ h2 {
     font-size: 0.8rem;
 }
 
-/* Popup стили — обновлены для соответствия странице деталей */
+/* Popup стили */
 .popup {
     position: fixed;
     top: 0;
@@ -363,7 +390,6 @@ h2 {
     justify-content: center;
 }
 
-/* Стили для новых элементов */
 .popup-content p {
     margin: 0.3rem 0;
     font-size: 0.95rem;
@@ -398,7 +424,6 @@ h2 {
     cursor: pointer;
 }
 
-/* Контейнер для элементов управления воспроизведением */
 #popup-playback-controls {
     margin: 1rem 0;
 }
@@ -437,7 +462,7 @@ h2 {
     cursor: pointer;
 }
 
-/* Остальные стили без изменений */
+/* Остальные стили */
 .settings-section {
     background-color: var(--secondary-bg);
     border: 1px solid var(--border-color);
@@ -591,7 +616,18 @@ h2 {
 }
 
 .player-controls input[type="range"] {
-    width: 150px;
+    flex: 1;
+    min-width: 100px;
+    max-width: 250px;
+}
+
+@media (max-width: 1040px) {
+    .tag-input,
+    #detail-new-tag {
+        width: 12.5%;           /* занимает всю доступную ширину */
+        padding: 0.4rem 0.6rem; /* уменьшенные отступы */
+        box-sizing: border-box; /* чтобы padding не увеличивал ширину */
+    }
 }
 
 @media (max-width: 768px) {
@@ -603,6 +639,10 @@ h2 {
         margin-left: 0;
         justify-content: center;
     }
+    .nav-btn {
+        padding: 0.75rem;
+        font-size: 1.1rem;
+    }
     .player-bar {
         flex-direction: column;
         align-items: stretch;
@@ -610,9 +650,256 @@ h2 {
     .player-controls {
         justify-content: center;
     }
+    .player-controls input[type="range"] {
+        max-width: none;
+        width: 100%;
+    }
+    .track-item button, .queue-item button, .excluded-item button, .playlist-item button {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+    .track-detail-actions button {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    /* ПРАВИЛА ДЛЯ УПРОЩЕНИЯ ИНТЕРФЕЙСА */
+    /* Скрываем лишние кнопки в треках библиотеки */
+    .track-item .add-tag-btn,
+    .track-item .exclude-btn,
+    .track-item .add-to-playlist-btn,
+    .track-item .tag-input {
+        display: none;
+    }
+
+    /* Оставляем только кнопки: В очередь, Сейчас, Подробнее */
+    .track-item .play-now-btn,
+    .track-item .play-immediate-btn,
+    .track-item .details-btn {
+        display: inline-block;
+    }
+
+    /* Упрощаем панель плеера: скрываем ползунки громкости и прогресса */
+    .player-bar #progress,
+    .player-bar #volume {
+        display: none;
+    }
 }
 
-/* Стили для тонкой настройки темы */
+/* Стили для очень узких экранов (до 465px) */
+@media (max-width: 465px) {
+    /* Уменьшаем отступы в шапке и основном контейнере */
+    header {
+        padding: 0.5rem;
+    }
+
+    .toolbar {
+        gap: 0.4rem;
+    }
+
+    .toolbar button, .toolbar select {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    /* Навигация: кнопки занимают всю ширину и выстраиваются в колонку */
+    .main-nav {
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .nav-btn {
+        flex: 1 1 calc(50% - 0.3rem);
+        text-align: center;
+        padding: 0.5rem 0.2rem;
+        font-size: 0.9rem;
+    }
+
+    /* Основной контент */
+    main {
+        padding: 0.5rem;
+    }
+
+    h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Поля фильтра и поиска */
+    .filter-bar, .search-bar {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .filter-bar input, .search-bar input {
+        width: 100%;
+    }
+
+    /* Элементы треков */
+    .track-item, .queue-item, .playlist-item {
+        padding: 0.5rem;
+    }
+
+    .track-item button, .queue-item button, .excluded-item button, .playlist-item button {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .track-item .tag-input {
+        width: 100%;
+        margin-top: 0.3rem;
+    }
+
+    .track-tags {
+        font-size: 0.75rem;
+    }
+
+    .tag-badge {
+        font-size: 0.7rem;
+        padding: 0.1rem 0.3rem;
+    }
+
+    /* Очередь */
+    .queue-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+
+    .queue-item span {
+        width: 100%;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    .queue-controls {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    /* Плейлисты */
+    .playlist-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+
+    .playlist-actions {
+        width: 100%;
+        display: flex;
+        gap: 0.3rem;
+    }
+
+    .playlist-actions button {
+        flex: 1;
+    }
+
+    /* Футер (плеер) */
+    .player-bar {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+
+    .player-cover {
+        width: 40px;
+        height: 40px;
+    }
+
+    .player-info {
+        min-width: 0;
+        font-size: 0.9rem;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    .player-controls {
+        gap: 0.4rem;
+    }
+
+    .player-controls button {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+    }
+
+    .player-controls input[type="range"] {
+        min-width: 80px;
+    }
+
+    /* Страница деталей трека */
+    .track-detail-cover,
+    .track-detail-cover.no-cover {
+        max-width: 150px;
+        max-height: 150px;
+        width: 150px;
+        height: 150px;
+    }
+
+    .track-detail-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .track-detail-actions button,
+    .track-detail-actions input {
+        width: 100%;
+    }
+
+    .playback-buttons button {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+
+    /* Настройки */
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+
+    .setting-item label {
+        min-width: auto;
+    }
+
+    .setting-item select,
+    .setting-item input[type="color"] {
+        width: 100%;
+    }
+
+    .excluded-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+
+    /* ПРАВИЛА ДЛЯ УПРОЩЕНИЯ ИНТЕРФЕЙСА */
+    /* Скрываем лишние кнопки в треках библиотеки */
+    .track-item .add-tag-btn,
+    .track-item .exclude-btn,
+    .track-item .add-to-playlist-btn,
+    .track-item .tag-input {
+        display: none;
+    }
+
+    /* Оставляем только кнопки: В очередь, Сейчас, Подробнее */
+    .track-item .play-now-btn,
+    .track-item .play-immediate-btn,
+    .track-item .details-btn {
+        display: inline-block;
+    }
+
+    /* Упрощаем панель плеера: скрываем ползунки громкости и прогресса */
+    .player-bar #progress,
+    .player-bar #volume {
+        display: none;
+    }
+}
+
+/* Тонкая настройка темы */
 .theme-fine-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -646,7 +933,7 @@ h2 {
     margin-top: 1rem;
 }
 
-/* Стили для отображения тегов с кнопками удаления */
+/* Теги с кнопками удаления */
 .tag-badge {
     display: inline-block;
     background-color: var(--secondary-bg);
@@ -680,7 +967,7 @@ h2 {
     color: white;
 }
 
-/* Обложка на странице деталей трека */
+/* Страница деталей трека */
 .track-detail {
     display: flex;
     flex-direction: column;

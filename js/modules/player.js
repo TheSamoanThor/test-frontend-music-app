@@ -39,10 +39,10 @@ var Player = class Player {
             }
         });
 
-        this.audio.addEventListener('ended', () => this.next());
+        this.audio.addEventListener('ended', () => this.next(true)); // авто-переключение с воспроизведением
         this.audio.addEventListener('error', (e) => {
             console.error('Audio error', e);
-            this.next();
+            this.next(true); // при ошибке тоже пробуем следующий
         });
 
         this.audio.addEventListener('play', () => {
@@ -99,11 +99,6 @@ var Player = class Player {
             const index = this.queue.indexOf(trackId);
             if (index !== -1) {
                 await this.removeFromQueue(index);
-            }
-            // Попробовать следующий трек, если есть
-            if (this.queue.length > 0) {
-                if (this.currentIndex >= this.queue.length) this.currentIndex = 0;
-                return this.loadTrack(this.queue[this.currentIndex]);
             }
             return false;
         }
@@ -186,21 +181,44 @@ var Player = class Player {
         this.isPlaying ? this.pause() : this.play();
     }
 
-    async next() {
+    /**
+     * Переключение на следующий трек
+     * @param {boolean} autoplay - если true, то после загрузки запустить воспроизведение
+     */
+    async next(autoplay = false) {
         if (this.queue.length === 0) return;
         this.currentIndex = (this.currentIndex + 1) % this.queue.length;
-        await this.loadTrack(this.queue[this.currentIndex]);
-        if (this.isPlaying) {
-            try { await this.audio.play(); } catch (e) { console.warn('Auto-play after next failed', e); }
+        const success = await this.loadTrack(this.queue[this.currentIndex]);
+        if (!success) {
+            // Если трек не загрузился, пробуем следующий рекурсивно
+            return this.next(autoplay);
+        }
+        if (autoplay) {
+            try {
+                await this.audio.play();
+            } catch (e) {
+                console.warn('Auto-play after next failed', e);
+            }
         }
     }
 
-    async prev() {
+    /**
+     * Переключение на предыдущий трек
+     * @param {boolean} autoplay - если true, то после загрузки запустить воспроизведение
+     */
+    async prev(autoplay = false) {
         if (this.queue.length === 0) return;
         this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
-        await this.loadTrack(this.queue[this.currentIndex]);
-        if (this.isPlaying) {
-            try { await this.audio.play(); } catch (e) { console.warn('Auto-play after prev failed', e); }
+        const success = await this.loadTrack(this.queue[this.currentIndex]);
+        if (!success) {
+            return this.prev(autoplay);
+        }
+        if (autoplay) {
+            try {
+                await this.audio.play();
+            } catch (e) {
+                console.warn('Auto-play after prev failed', e);
+            }
         }
     }
 
