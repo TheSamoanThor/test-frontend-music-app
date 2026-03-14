@@ -325,9 +325,9 @@ var Player = class Player {
         } else {
             this.audio.volume = this.baseVolume / 100;
         }
-        if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
-            const popupVolume = document.getElementById('popup-volume');
-            if (popupVolume) popupVolume.value = percent;
+        // Синхронизируем все ползунки громкости в интерфейсе
+        if (this.ui) {
+            this.ui.syncVolumeSliders(percent);
         }
     }
 

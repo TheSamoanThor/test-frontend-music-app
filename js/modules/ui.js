@@ -60,10 +60,11 @@ var UI = class UI {
         // Глобальный обработчик кликов для удаления тегов и перехода на страницу трека
         document.addEventListener('click', async (e) => {
             // Удаление тега
-            if (e.target.classList.contains('remove-tag-btn')) {
-                e.stopPropagation(); // предотвращаем всплытие
-                const trackId = e.target.dataset.trackId;
-                const tagToRemove = e.target.dataset.tag;
+            if (e.target.classList.contains('remove-tag-btn') || e.target.closest('.remove-tag-btn')) {
+                const btn = e.target.closest('.remove-tag-btn');
+                e.stopPropagation();
+                const trackId = btn.dataset.trackId;
+                const tagToRemove = btn.dataset.tag;
                 const tags = await this.db.getTags(trackId);
                 const newTags = tags.filter(t => t !== tagToRemove);
                 await this.db.setTags(trackId, newTags);
@@ -233,19 +234,19 @@ var UI = class UI {
                 e.dataTransfer.setData('text/plain', track.id);
             });
             const tagsHtml = tags.length > 0 
-                ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${track.id}" data-tag="${t}">✖</button></span>`).join(' ')
+                ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${track.id}" data-tag="${t}"><svg class="icon"><use href="#icon-close"></use></svg></button></span>`).join(' ')
                 : 'без тегов';
             li.innerHTML = `
                 <span><strong>${track.name}</strong> (${utils.formatTime(track.duration)})</span>
-                <div class="track-tags">🏷️ ${tagsHtml}</div>
+                <div class="track-tags"><svg class="icon"><use href="#icon-tag"></use></svg> ${tagsHtml}</div>
                 <div>
-                    <button class="add-tag-btn" data-id="${track.id}">➕ Добавить</button>
+                    <button class="add-tag-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить</button>
                     <input type="text" placeholder="новый тег" class="tag-input" data-id="${track.id}">
-                    <button class="exclude-btn" data-id="${track.id}">${isExcluded ? '✅ Включить' : '🚫 Исключить'}</button>
-                    <button class="play-now-btn" data-id="${track.id}">▶ В очередь</button>
-                    <button class="play-immediate-btn" data-id="${track.id}">▶ Сейчас</button>
-                    <button class="add-to-playlist-btn" data-id="${track.id}">📋 В плейлист</button>
-                    <button class="details-btn" data-id="${track.id}">🔍 Подробнее</button>
+                    <button class="exclude-btn" data-id="${track.id}">${isExcluded ? '<svg class="icon"><use href="#icon-check"></use></svg> Включить' : '<svg class="icon"><use href="#icon-ban"></use></svg> Исключить'}</button>
+                    <button class="play-now-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
+                    <button class="play-immediate-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-play"></use></svg> Сейчас</button>
+                    <button class="add-to-playlist-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-playlist"></use></svg> В плейлист</button>
+                    <button class="details-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-info"></use></svg> Подробнее</button>
                 </div>
             `;
             listEl.appendChild(li);
@@ -255,8 +256,8 @@ var UI = class UI {
         document.querySelectorAll('.add-tag-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.dataset.id;
-                const input = e.target.parentElement.querySelector('.tag-input');
+                const id = e.target.closest('button').dataset.id;
+                const input = e.target.closest('div').querySelector('.tag-input');
                 const newTag = input.value.trim();
                 if (newTag) {
                     const currentTags = await this.db.getTags(id);
@@ -275,7 +276,7 @@ var UI = class UI {
         document.querySelectorAll('.exclude-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.dataset.id;
+                const id = e.target.closest('button').dataset.id;
                 const tags = await this.db.getTags(id);
                 const excludedTag = '🚫 excluded';
                 if (tags.includes(excludedTag)) {
@@ -295,7 +296,7 @@ var UI = class UI {
         document.querySelectorAll('.play-now-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.dataset.id;
+                const id = e.target.closest('button').dataset.id;
                 await this.player.addToQueue([id]);
                 if (this.player.queue.length === 1) {
                     this.player.currentIndex = 0;
@@ -308,7 +309,7 @@ var UI = class UI {
         document.querySelectorAll('.play-immediate-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.dataset.id;
+                const id = e.target.closest('button').dataset.id;
                 await this.player.playNow(id);
             });
         });
@@ -316,7 +317,7 @@ var UI = class UI {
         document.querySelectorAll('.add-to-playlist-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const trackId = e.target.dataset.id;
+                const trackId = e.target.closest('button').dataset.id;
                 const playlists = await this.db.getAllPlaylists();
                 if (playlists.length === 0) {
                     alert('Сначала создайте плейлист');
@@ -343,7 +344,7 @@ var UI = class UI {
         document.querySelectorAll('.details-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const id = e.target.dataset.id;
+                const id = e.target.closest('button').dataset.id;
                 Router.navigate('track', id);
             });
         });
@@ -362,9 +363,9 @@ var UI = class UI {
             li.innerHTML = `
                 <span>${track.name}</span>
                 <div class="queue-controls">
-                    <button class="queue-up" data-index="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
-                    <button class="queue-down" data-index="${i}" ${i === queueIds.length-1 ? 'disabled' : ''}>↓</button>
-                    <button class="queue-remove" data-index="${i}">✖</button>
+                    <button class="queue-up" data-index="${i}" ${i === 0 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-up"></use></svg></button>
+                    <button class="queue-down" data-index="${i}" ${i === queueIds.length-1 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-down"></use></svg></button>
+                    <button class="queue-remove" data-index="${i}"><svg class="icon"><use href="#icon-close"></use></svg></button>
                 </div>
             `;
             listEl.appendChild(li);
@@ -372,7 +373,7 @@ var UI = class UI {
 
         document.querySelectorAll('.queue-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const index = parseInt(e.target.dataset.index);
+                const index = parseInt(e.target.closest('button').dataset.index);
                 if (index > 0) {
                     [this.player.queue[index-1], this.player.queue[index]] = [this.player.queue[index], this.player.queue[index-1]];
                     if (this.player.currentIndex === index) this.player.currentIndex--;
@@ -385,7 +386,7 @@ var UI = class UI {
 
         document.querySelectorAll('.queue-down').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const index = parseInt(e.target.dataset.index);
+                const index = parseInt(e.target.closest('button').dataset.index);
                 if (index < this.player.queue.length - 1) {
                     [this.player.queue[index], this.player.queue[index+1]] = [this.player.queue[index+1], this.player.queue[index]];
                     if (this.player.currentIndex === index) this.player.currentIndex++;
@@ -398,7 +399,7 @@ var UI = class UI {
 
         document.querySelectorAll('.queue-remove').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const index = parseInt(e.target.dataset.index);
+                const index = parseInt(e.target.closest('button').dataset.index);
                 await this.player.removeFromQueue(index);
             });
         });
@@ -408,7 +409,7 @@ var UI = class UI {
 
     updateCurrentTrack(track, pictureUrl) {
         const nameEl = document.getElementById('current-track-name');
-        nameEl.textContent = track ? `🎵 ${track.name}` : '🎵 Не выбрано';
+        nameEl.innerHTML = track ? `<svg class="icon"><use href="#icon-note"></use></svg> ${track.name}` : '<svg class="icon"><use href="#icon-note"></use></svg> Не выбрано';
 
         const coverImg = document.getElementById('current-track-cover');
         const visualizerCanvas = document.getElementById('player-visualizer');
@@ -467,9 +468,14 @@ var UI = class UI {
     }
 
     setPlayPauseIcon(playing) {
-        document.getElementById('play-pause').textContent = playing ? '⏸️' : '▶️';
+        const playPauseBtn = document.getElementById('play-pause');
+        if (playPauseBtn) {
+            playPauseBtn.innerHTML = playing ? '<svg class="icon"><use href="#icon-pause"></use></svg>' : '<svg class="icon"><use href="#icon-play"></use></svg>';
+        }
         const trackPlayPause = document.getElementById('track-play-pause');
-        if (trackPlayPause) trackPlayPause.textContent = playing ? '⏸️' : '▶️';
+        if (trackPlayPause) {
+            trackPlayPause.innerHTML = playing ? '<svg class="icon"><use href="#icon-pause"></use></svg>' : '<svg class="icon"><use href="#icon-play"></use></svg>';
+        }
     }
 
     updateTrackPlaybackControls() {
@@ -550,7 +556,7 @@ var UI = class UI {
                 li.className = 'excluded-item';
                 li.innerHTML = `
                     <span>${track.name}</span>
-                    <button class="remove-exclusion" data-id="${track.id}">✖ Убрать исключение</button>
+                    <button class="remove-exclusion" data-id="${track.id}"><svg class="icon"><use href="#icon-close"></use></svg> Убрать исключение</button>
                 `;
                 excludedList.appendChild(li);
             }
@@ -558,7 +564,7 @@ var UI = class UI {
 
         document.querySelectorAll('.remove-exclusion').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const id = e.target.dataset.id;
+                const id = e.target.closest('button').dataset.id;
                 const tags = await this.db.getTags(id);
                 const newTags = tags.filter(t => t !== '🚫 excluded');
                 await this.db.setTags(id, newTags);
@@ -646,12 +652,12 @@ var UI = class UI {
 
         const container = document.getElementById('track-detail-container');
         const tagsHtml = tags.length > 0 
-            ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${trackId}" data-tag="${t}">✖</button></span>`).join(' ')
+            ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${trackId}" data-tag="${t}"><svg class="icon"><use href="#icon-close"></use></svg></button></span>`).join(' ')
             : 'нет';
 
         const coverHtml = pictureUrl 
             ? `<img src="${pictureUrl}" alt="cover" class="track-detail-cover" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`
-            : '<div class="track-detail-cover no-cover">🎵</div>';
+            : '<div class="track-detail-cover no-cover"><svg class="icon"><use href="#icon-note"></use></svg></div>';
 
         container.innerHTML = `
             <div class="track-detail">
@@ -662,12 +668,12 @@ var UI = class UI {
                 <p><strong>Теги:</strong> ${tagsHtml}</p>
                 <p><strong>Исключён:</strong> ${isExcluded ? 'да' : 'нет'}</p>
                 <div class="track-detail-actions">
-                    <button id="detail-add-tag">➕ Добавить тег</button>
+                    <button id="detail-add-tag"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить тег</button>
                     <input type="text" id="detail-new-tag" placeholder="новый тег">
-                    <button id="detail-toggle-exclude">${isExcluded ? '✅ Вернуть в случайный выбор' : '🚫 Исключить из случайного выбора'}</button>
-                    <button id="detail-add-to-queue">➕ В очередь</button>
-                    <button id="detail-play-now">▶ Воспроизвести сейчас</button>
-                    <button id="detail-add-to-playlist">📋 В плейлист</button>
+                    <button id="detail-toggle-exclude">${isExcluded ? '<svg class="icon"><use href="#icon-check"></use></svg> Вернуть в случайный выбор' : '<svg class="icon"><use href="#icon-ban"></use></svg> Исключить из случайного выбора'}</button>
+                    <button id="detail-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
+                    <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
+                    <button id="detail-add-to-playlist"><svg class="icon"><use href="#icon-playlist"></use></svg> В плейлист</button>
                 </div>
             </div>
         `;
@@ -753,8 +759,8 @@ var UI = class UI {
                 <div class="playlist-header">
                     <strong>${pl.name}</strong>
                     <div class="playlist-actions">
-                        <button class="playlist-load" data-id="${pl.id}">▶ Загрузить в очередь</button>
-                        <button class="playlist-delete" data-id="${pl.id}">🗑️ Удалить</button>
+                        <button class="playlist-load" data-id="${pl.id}"><svg class="icon"><use href="#icon-play"></use></svg> Загрузить в очередь</button>
+                        <button class="playlist-delete" data-id="${pl.id}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить</button>
                     </div>
                 </div>
                 <div class="playlist-tracks" id="playlist-tracks-${pl.id}" style="display: none;"></div>
@@ -773,7 +779,7 @@ var UI = class UI {
 
             plDiv.querySelector('.playlist-load').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.dataset.id;
+                const id = e.target.closest('button').dataset.id;
                 const playlist = await this.db.getPlaylist(id);
                 if (playlist && playlist.tracks.length) {
                     await this.player.addToQueue(playlist.tracks);
@@ -782,7 +788,7 @@ var UI = class UI {
 
             plDiv.querySelector('.playlist-delete').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.dataset.id;
+                const id = e.target.closest('button').dataset.id;
                 if (confirm('Удалить плейлист?')) {
                     await this.db.deletePlaylist(id);
                     this.renderPlaylists();
@@ -804,9 +810,9 @@ var UI = class UI {
             trackDiv.innerHTML = `
                 <span>${track.name}</span>
                 <div class="playlist-track-controls">
-                    <button class="playlist-track-up" data-playlist="${playlistId}" data-index="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
-                    <button class="playlist-track-down" data-playlist="${playlistId}" data-index="${i}" ${i === playlist.tracks.length-1 ? 'disabled' : ''}>↓</button>
-                    <button class="playlist-track-remove" data-playlist="${playlistId}" data-index="${i}">✖</button>
+                    <button class="playlist-track-up" data-playlist="${playlistId}" data-index="${i}" ${i === 0 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-up"></use></svg></button>
+                    <button class="playlist-track-down" data-playlist="${playlistId}" data-index="${i}" ${i === playlist.tracks.length-1 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-down"></use></svg></button>
+                    <button class="playlist-track-remove" data-playlist="${playlistId}" data-index="${i}"><svg class="icon"><use href="#icon-close"></use></svg></button>
                 </div>
             `;
             container.appendChild(trackDiv);
@@ -815,8 +821,8 @@ var UI = class UI {
         container.querySelectorAll('.playlist-track-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const playlistId = e.target.dataset.playlist;
-                const index = parseInt(e.target.dataset.index);
+                const playlistId = e.target.closest('button').dataset.playlist;
+                const index = parseInt(e.target.closest('button').dataset.index);
                 if (index > 0) {
                     const playlist = await this.db.getPlaylist(playlistId);
                     [playlist.tracks[index-1], playlist.tracks[index]] = [playlist.tracks[index], playlist.tracks[index-1]];
@@ -829,8 +835,8 @@ var UI = class UI {
         container.querySelectorAll('.playlist-track-down').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const playlistId = e.target.dataset.playlist;
-                const index = parseInt(e.target.dataset.index);
+                const playlistId = e.target.closest('button').dataset.playlist;
+                const index = parseInt(e.target.closest('button').dataset.index);
                 const playlist = await this.db.getPlaylist(playlistId);
                 if (index < playlist.tracks.length - 1) {
                     [playlist.tracks[index], playlist.tracks[index+1]] = [playlist.tracks[index+1], playlist.tracks[index]];
@@ -843,8 +849,8 @@ var UI = class UI {
         container.querySelectorAll('.playlist-track-remove').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const playlistId = e.target.dataset.playlist;
-                const index = parseInt(e.target.dataset.index);
+                const playlistId = e.target.closest('button').dataset.playlist;
+                const index = parseInt(e.target.closest('button').dataset.index);
                 const playlist = await this.db.getPlaylist(playlistId);
                 playlist.tracks.splice(index, 1);
                 await this.db.updatePlaylist(playlist);
@@ -859,5 +865,16 @@ var UI = class UI {
             this.db.addPlaylist({ name, tracks: [] });
             this.renderPlaylists();
         }
+    }
+
+    syncVolumeSliders(percent) {
+        const volumeSlider = document.getElementById('volume');
+        if (volumeSlider) volumeSlider.value = percent;
+
+        const trackVolume = document.getElementById('track-volume');
+        if (trackVolume) trackVolume.value = percent;
+
+        const popupVolume = document.getElementById('popup-volume');
+        if (popupVolume) popupVolume.value = percent;
     }
 };
