@@ -73,6 +73,7 @@ header {
     flex-wrap: wrap;
     gap: 0.75rem;
     align-items: center;
+    justify-content: space-evenly;
 }
 
 .toolbar button, .toolbar select, .toolbar input[type="color"] {

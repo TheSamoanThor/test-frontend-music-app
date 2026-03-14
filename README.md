@@ -2,6 +2,8 @@
 
 <p>Веб-приложение для проигрывания музыки прямо в браузере с поддержкой тегов, гибкой настройкой громкости, очередью воспроизведения и множеством тем оформления. Все данные хранятся локально в IndexedDB, музыкальные файлы читаются через File System Access API (или стандартный выбор файлов).</p>
 
+<p>Файлы библиотек не были написаны мною, это не моя работа, но я благодарен тем, кто их написал (:)</p>
+
 <h2>🚀 Основные возможности</h2>
 <ul>
   <li><strong>Библиотека треков</strong> – после выбора папки с музыкой все аудиофайлы отображаются в виде списка.</li>
@@ -79,6 +81,8 @@
 <h1>🎵 Music Player with Tags and Queue</h1>
 
 <p>A web application for playing music directly in the browser with tag support, flexible volume control, a playback queue, and multiple themes. All data is stored locally in IndexedDB; music files are read via the File System Access API (or standard file picker).</p>
+
+<p>I didnt create the library files, but I'm very grateful for their existence (:)</p>
 
 <h2>🚀 Key Features</h2>
 <ul>
