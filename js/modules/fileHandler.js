@@ -2,13 +2,22 @@ var FileHandler = class FileHandler {
     constructor(db) {
         this.db = db;
         this.isFileSystemAccessSupported = 'showDirectoryPicker' in window;
-        // Расширения аудиофайлов для дополнительной проверки
         this.audioExtensions = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.wma', '.opus'];
+        this.fallbackMode = false; // true = использовать input file вместо showDirectoryPicker
+        this.onAccessLost = null; // колбэк при потере доступа к файлу
+    }
+
+    isFallbackMode() {
+        return this.fallbackMode;
+    }
+
+    setFallbackMode(mode) {
+        this.fallbackMode = mode;
     }
 
     async pickDirectory() {
-        if (!this.isFileSystemAccessSupported) {
-            alert('Ваш браузер не поддерживает прямой доступ к папкам. Будет использован стандартный выбор файлов.');
+        // Если в fallback-режиме или не поддерживается showDirectoryPicker, используем pickFiles
+        if (this.fallbackMode || !this.isFileSystemAccessSupported) {
             return this.pickFiles();
         }
         try {
@@ -17,6 +26,13 @@ var FileHandler = class FileHandler {
             return tracks;
         } catch (err) {
             console.error('Ошибка выбора папки', err);
+            // Если ошибка связана с разрешением или отменой, можем спросить пользователя, хочет ли он переключиться на файлы
+            if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+                if (this.onAccessLost) {
+                    // Вызовем колбэк с null, чтобы показать диалог о переключении режима
+                    this.onAccessLost(null);
+                }
+            }
             return [];
         }
     }
@@ -28,7 +44,6 @@ var FileHandler = class FileHandler {
         for await (const entry of dirHandle.values()) {
             if (entry.kind === 'file') {
                 const file = await entry.getFile();
-                // Проверка: аудио по MIME-типу или по расширению
                 const isAudio = file.type.startsWith('audio/') || 
                     this.audioExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
                 
@@ -43,7 +58,6 @@ var FileHandler = class FileHandler {
                     };
                     tracks.push(track);
                     
-                    // Создаём промис для асинхронного получения длительности и добавления в БД
                     const addPromise = this.getAudioDuration(file).then(duration => {
                         track.duration = duration;
                         return this.db.addTrack(track);
@@ -53,11 +67,9 @@ var FileHandler = class FileHandler {
             } else if (entry.kind === 'directory') {
                 const subTracks = await this.processDirectory(entry, path + '/' + entry.name);
                 tracks = tracks.concat(subTracks);
-                // Промисы из поддиректорий уже были обработаны внутри рекурсивного вызова
             }
         }
 
-        // Ждём завершения всех операций добавления для текущей директории
         await Promise.all(addPromises);
         return tracks;
     }
@@ -71,7 +83,7 @@ var FileHandler = class FileHandler {
                 URL.revokeObjectURL(audio.src);
             });
             audio.addEventListener('error', () => {
-                resolve(0); // если не удалось определить длительность
+                resolve(0);
                 URL.revokeObjectURL(audio.src);
             });
         });
@@ -93,7 +105,7 @@ var FileHandler = class FileHandler {
                         id,
                         name: file.name,
                         path: file.webkitRelativePath || file.name,
-                        file: file, // сохраняем сам файл (для fallback)
+                        file: file, // сохраняем сам файл
                         duration: 0
                     };
                     tracks.push(track);
@@ -110,43 +122,20 @@ var FileHandler = class FileHandler {
         });
     }
 
-    /**
-     * Получение файла для трека.
-     * Если доступ через handle потерян, пытаемся запросить разрешение заново.
-     * @param {Object} track - объект трека
-     * @returns {Promise<File|null>}
-     */
     async getFileForTrack(track) {
-        // Если есть handle (FileSystemFileHandle)
         if (track.handle) {
             try {
-                // Пробуем получить файл напрямую
                 return await track.handle.getFile();
             } catch (err) {
-                console.warn(`Доступ к файлу "${track.name}" потерян, запрашиваем разрешение...`, err);
-                // Пытаемся запросить разрешение (поддерживается не во всех браузерах)
-                if (track.handle.requestPermission) {
-                    try {
-                        const permission = await track.handle.requestPermission({ mode: 'read' });
-                        if (permission === 'granted') {
-                            // Разрешение получено, пробуем снова
-                            return await track.handle.getFile();
-                        } else {
-                            console.warn(`Пользователь отказал в доступе к файлу "${track.name}"`);
-                            // Удаляем трек из библиотеки или помечаем как недоступный? Пока просто вернём null.
-                        }
-                    } catch (permErr) {
-                        console.error('Ошибка при запросе разрешения:', permErr);
+                if (err.name === 'NotAllowedError') {
+                    console.warn(`Доступ к файлу "${track.name}" потерян.`);
+                    if (this.onAccessLost) {
+                        this.onAccessLost(track);
                     }
-                } else {
-                    console.warn('requestPermission не поддерживается для этого handle');
                 }
-                // Если ничего не помогло, возвращаем null
                 return null;
             }
-        } 
-        // Если есть прямой объект File (для fallback режима pickFiles)
-        else if (track.file) {
+        } else if (track.file) {
             return track.file;
         }
         return null;
@@ -154,7 +143,6 @@ var FileHandler = class FileHandler {
 
     async getPictureBlobUrl(file) {
         if (!file) return null;
-
         return new Promise((resolve) => {
             jsmediatags.read(file, {
                 onSuccess: (tag) => {

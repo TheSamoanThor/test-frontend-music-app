@@ -9,6 +9,10 @@ var UI = class UI {
         this.currentPictureUrl = null;
         this.detailPictureUrl = null;
         this.playerVisualizerCallback = null;
+        this.trackProgressHandler = null;
+
+        // Привязываем колбэк потери доступа
+        this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
 
         this.initEventListeners();
     }
@@ -59,7 +63,6 @@ var UI = class UI {
 
         // Глобальный обработчик кликов для удаления тегов и перехода на страницу трека
         document.addEventListener('click', async (e) => {
-            // Удаление тега
             if (e.target.classList.contains('remove-tag-btn') || e.target.closest('.remove-tag-btn')) {
                 const btn = e.target.closest('.remove-tag-btn');
                 e.stopPropagation();
@@ -76,8 +79,6 @@ var UI = class UI {
                     await this.player.updateEffectiveVolume();
                 }
             }
-            // Переход на страницу деталей трека при клике на элемент трека,
-            // но не на кнопки, не на поля ввода и не на другие интерактивные элементы
             else if (e.target.closest('.track-item') && 
                      !e.target.closest('button') && 
                      !e.target.closest('input') && 
@@ -111,7 +112,6 @@ var UI = class UI {
             });
         }
 
-        // Клик по плашке текущего трека (футер) -> переход на страницу деталей этого трека
         document.getElementById('player-bar').addEventListener('click', (e) => {
             if (e.target.closest('button') || e.target.closest('input')) return;
             if (this.player.currentTrack) {
@@ -119,12 +119,10 @@ var UI = class UI {
             }
         });
 
-        // Кнопка создания плейлиста
         document.getElementById('create-playlist')?.addEventListener('click', () => {
             this.createPlaylistDialog();
         });
 
-        // Обработчики для элементов управления на странице деталей
         const trackPlayPause = document.getElementById('track-play-pause');
         if (trackPlayPause) {
             trackPlayPause.addEventListener('click', () => this.player.togglePlay());
@@ -145,7 +143,67 @@ var UI = class UI {
         if (trackVolume) {
             trackVolume.addEventListener('input', (e) => this.player.setVolume(e.target.value));
         }
+
+        // Кнопки переключения режима доступа
+        document.getElementById('switch-to-file-picker')?.addEventListener('click', () => this.switchToFilePickerMode());
+        document.getElementById('switch-to-folder-picker')?.addEventListener('click', () => this.switchToFolderPickerMode());
     }
+
+    // ----- Новые методы для обработки потери доступа и переключения режимов -----
+    async handleFileAccessLost(track) {
+        // Если track === null, значит ошибка при выборе папки (пользователь отменил или запретил доступ)
+        if (track === null) {
+            if (confirm('Не удалось получить доступ к папке. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)')) {
+                await this.switchToFilePickerMode();
+            }
+        } else {
+            // Потеря доступа к конкретному файлу
+            if (confirm(`Доступ к файлу "${track.name}" потерян. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)`)) {
+                await this.switchToFilePickerMode();
+            } else {
+                // Если пользователь отказался, просто удаляем недоступный трек из очереди (плеер сам обработает)
+                // Можно также пометить трек как недоступный, но для простоты оставим так
+            }
+        }
+    }
+
+    async switchToFilePickerMode() {
+        if (!confirm('Переключение в режим выбора файлов очистит всю текущую библиотеку и настройки треков. Продолжить?')) {
+            return;
+        }
+        // Очищаем все данные в БД (кроме настроек)
+        await this.db.clearAllData();
+        // Очищаем очередь в плеере
+        await this.player.clearQueue();
+        // Устанавливаем fallback-режим
+        this.fileHandler.setFallbackMode(true);
+        // Вызываем выбор файлов
+        await this.fileHandler.pickFiles();
+        // Перерисовываем библиотеку
+        await this.renderLibrary();
+        // Обновляем страницы
+        Router.handleRoute();
+    }
+
+    async switchToFolderPickerMode() {
+        if (!this.fileHandler.isFileSystemAccessSupported) {
+            alert('Ваш браузер не поддерживает выбор папки.');
+            return;
+        }
+        if (!confirm('Переключение в режим выбора папки очистит всю текущую библиотеку и настройки треков. Продолжить?')) {
+            return;
+        }
+        // Очищаем все данные в БД
+        await this.db.clearAllData();
+        await this.player.clearQueue();
+        // Выключаем fallback-режим
+        this.fileHandler.setFallbackMode(false);
+        // Вызываем выбор папки
+        await this.fileHandler.pickDirectory();
+        await this.renderLibrary();
+        Router.handleRoute();
+    }
+    // -------------------------------------------------------------------------
 
     registerPlayerVisualizer() {
         if (this.player) {
@@ -252,7 +310,6 @@ var UI = class UI {
             listEl.appendChild(li);
         }
 
-        // Добавляем обработчики для кнопок внутри каждого трека
         document.querySelectorAll('.add-tag-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -451,18 +508,14 @@ var UI = class UI {
             }
         }
 
-        // Логика для страницы деталей трека
         if (window.location.hash.startsWith('#track/')) {
             const currentTrackIdInHash = window.location.hash.split('/')[1];
             if (currentTrackIdInHash !== track.id) {
-                // Если открыта страница другого трека, перенаправляем на новый текущий
                 Router.navigate('track', track.id);
             } else {
-                // Если открыта страница этого же трека, просто обновляем содержимое
                 this.loadTrackDetail(track.id);
             }
         } else {
-            // Если не на странице деталей, обновляем блок управления (он скрыт, но на всякий случай)
             this.updateTrackPlaybackControls();
         }
     }
@@ -508,43 +561,33 @@ var UI = class UI {
         }
     }
 
-    /**
-     * Обновляет все прогресс-бары и индикаторы времени на всех страницах.
-     * @param {number} currentTime - текущее время воспроизведения
-     * @param {number} duration - общая длительность
-     */
     updateAllProgressBars(currentTime, duration) {
         if (!duration) return;
         const percent = (currentTime / duration) * 100;
 
-        // Нижняя панель плеера
         const bottomProgress = document.getElementById('progress');
         if (bottomProgress) {
             bottomProgress.value = percent;
             if (window.updateRangeFill) window.updateRangeFill(bottomProgress);
         }
 
-        // Страница деталей трека
         const trackProgress = document.getElementById('track-progress');
         if (trackProgress) {
             trackProgress.value = percent;
             if (window.updateRangeFill) window.updateRangeFill(trackProgress);
         }
 
-        // Всплывающее окно (если есть)
         const popupProgress = document.getElementById('popup-progress');
         if (popupProgress) {
             popupProgress.value = percent;
             if (window.updateRangeFill) window.updateRangeFill(popupProgress);
         }
 
-        // Обновление текста времени на странице деталей
         const trackTime = document.getElementById('track-time');
         if (trackTime) {
             trackTime.textContent = `${utils.formatTime(currentTime)} / ${utils.formatTime(duration)}`;
         }
 
-        // Если у всплывающего окна есть собственный метод обновления
         if (this.popup && typeof this.popup.updateProgress === 'function') {
             this.popup.updateProgress(currentTime, duration);
         }
@@ -649,7 +692,6 @@ var UI = class UI {
                 this.themeManager.root.style.setProperty(varName, value);
                 await this.db.setSetting('theme:var:' + varName, value);
 
-                // Обновляем все ползунки, чтобы новый цвет применился к заливке
                 if (window.initAllRanges) window.initAllRanges();
             }, 200));
         });
@@ -663,7 +705,6 @@ var UI = class UI {
                 this.themeManager.applyPreset(this.themeManager.currentPreset);
                 this.renderThemeFineTuning();
 
-                // После сброса тоже обновляем ползунки
                 if (window.initAllRanges) window.initAllRanges();
             };
         }
@@ -915,10 +956,6 @@ var UI = class UI {
         }
     }
 
-    /**
-     * Синхронизирует все ползунки громкости в интерфейсе.
-     * @param {number} percent - значение громкости от 0 до 100
-     */
     syncVolumeSliders(percent) {
         const volumeSlider = document.getElementById('volume');
         if (volumeSlider) {

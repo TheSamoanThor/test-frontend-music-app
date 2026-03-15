@@ -170,7 +170,7 @@ var Database = class Database {
         });
     }
 
-    // ---- Громкость для тегов (оставлено для совместимости, но не используется в UI) ----
+    // ---- Громкость для тегов ----
     async getTagVolume(tag) {
         const tx = this.db.transaction(this.stores.tagVolumes, 'readonly');
         const store = tx.objectStore(this.stores.tagVolumes);
@@ -316,6 +316,26 @@ var Database = class Database {
                         };
                     });
                 };
+            });
+        }
+    }
+
+    // ---- Очистка всех данных (кроме настроек) ----
+    async clearAllData() {
+        const stores = [
+            this.stores.tracks,
+            this.stores.queue,
+            this.stores.tags,
+            this.stores.tagVolumes,
+            this.stores.playlists
+        ];
+        for (let storeName of stores) {
+            const tx = this.db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            await new Promise((resolve, reject) => {
+                const req = store.clear();
+                req.onerror = () => reject(req.error);
+                req.onsuccess = () => resolve();
             });
         }
     }

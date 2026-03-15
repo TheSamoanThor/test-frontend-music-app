@@ -3,6 +3,12 @@
     await db.init();
 
     const fileHandler = new FileHandler(db);
+    // Если showDirectoryPicker не поддерживается, сразу переходим в fallback-режим
+    if (!fileHandler.isFileSystemAccessSupported) {
+        fileHandler.setFallbackMode(true);
+        alert('Ваш браузер не поддерживает прямой выбор папки. Будет использован режим выбора отдельных файлов.');
+    }
+
     const themeManager = new ThemeManager();
     await themeManager.loadFromDB(db);
 
