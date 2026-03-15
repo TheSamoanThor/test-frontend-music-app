@@ -31,18 +31,15 @@ var Player = class Player {
     initAudioEvents() {
         this.audio.addEventListener('timeupdate', () => {
             if (!this.audio.duration) return;
-            const progress = (this.audio.currentTime / this.audio.duration) * 100;
-            const progressEl = document.getElementById('progress');
-            if (progressEl) progressEl.value = progress;
-            if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
-                this.ui.popup.updateProgress(this.audio.currentTime, this.audio.duration);
+            if (this.ui) {
+                this.ui.updateAllProgressBars(this.audio.currentTime, this.audio.duration);
             }
         });
 
-        this.audio.addEventListener('ended', () => this.next(true)); // авто-переключение с воспроизведением
+        this.audio.addEventListener('ended', () => this.next(true));
         this.audio.addEventListener('error', (e) => {
             console.error('Audio error', e);
-            this.next(true); // при ошибке тоже пробуем следующий
+            this.next(true);
         });
 
         this.audio.addEventListener('play', () => {
@@ -58,9 +55,6 @@ var Player = class Player {
         });
     }
 
-    /**
-     * Load queue from database and optionally start playing first track
-     */
     async loadQueue() {
         try {
             this.queue = await this.db.getQueue() || [];
@@ -74,11 +68,6 @@ var Player = class Player {
         }
     }
 
-    /**
-     * Load a track by ID into the audio element
-     * @param {string} trackId
-     * @returns {Promise<boolean>} success
-     */
     async loadTrack(trackId) {
         const track = await this.db.getTrack(trackId);
         if (!track) {
@@ -86,7 +75,6 @@ var Player = class Player {
             return false;
         }
 
-        // Освободить предыдущий объектный URL, если есть
         if (this.currentObjectUrl) {
             URL.revokeObjectURL(this.currentObjectUrl);
             this.currentObjectUrl = null;
@@ -95,7 +83,7 @@ var Player = class Player {
         const file = await this.fileHandler.getFileForTrack(track);
         if (!file) {
             console.warn(`File not accessible for track: ${track.name} (${trackId})`);
-            // Удалить из очереди без алерта
+            // Удаляем недоступный трек из очереди, чтобы избежать зацикливания
             const index = this.queue.indexOf(trackId);
             if (index !== -1) {
                 await this.removeFromQueue(index);
@@ -109,10 +97,8 @@ var Player = class Player {
         this.audio.src = url;
         this.audio.load();
 
-        // Обновить громкость согласно тегам
         await this.updateEffectiveVolume();
 
-        // Если плеер был в состоянии воспроизведения, продолжить
         if (this.isPlaying) {
             try {
                 await this.audio.play();
@@ -121,11 +107,9 @@ var Player = class Player {
             }
         }
 
-        // Обновить UI: обложка и информация
         const pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
         if (this.ui) this.ui.updateCurrentTrack(track, pictureUrl);
 
-        // Обновить попап, если он открыт для этого трека
         if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
             this.ui.popup.updateForTrack(track, pictureUrl, true);
         }
@@ -133,9 +117,6 @@ var Player = class Player {
         return true;
     }
 
-    /**
-     * Update audio volume based on tags and base volume
-     */
     async updateEffectiveVolume() {
         if (!this.currentTrack) return;
         try {
@@ -181,44 +162,63 @@ var Player = class Player {
         this.isPlaying ? this.pause() : this.play();
     }
 
-    /**
-     * Переключение на следующий трек
-     * @param {boolean} autoplay - если true, то после загрузки запустить воспроизведение
-     */
     async next(autoplay = false) {
         if (this.queue.length === 0) return;
-        this.currentIndex = (this.currentIndex + 1) % this.queue.length;
-        const success = await this.loadTrack(this.queue[this.currentIndex]);
-        if (!success) {
-            // Если трек не загрузился, пробуем следующий рекурсивно
-            return this.next(autoplay);
-        }
-        if (autoplay) {
-            try {
-                await this.audio.play();
-            } catch (e) {
-                console.warn('Auto-play after next failed', e);
+
+        const startIndex = this.currentIndex;
+        let attempts = 0;
+        const maxAttempts = this.queue.length;
+
+        while (attempts < maxAttempts) {
+            this.currentIndex = (this.currentIndex + 1) % this.queue.length;
+            const success = await this.loadTrack(this.queue[this.currentIndex]);
+            if (success) {
+                if (autoplay) {
+                    try {
+                        await this.audio.play();
+                    } catch (e) {
+                        console.warn('Auto-play after next failed', e);
+                    }
+                }
+                return;
             }
+            attempts++;
+        }
+
+        console.error('Все треки в очереди недоступны');
+        this.pause();
+        if (this.ui) {
+            this.ui.updateCurrentTrack(null);
         }
     }
 
-    /**
-     * Переключение на предыдущий трек
-     * @param {boolean} autoplay - если true, то после загрузки запустить воспроизведение
-     */
     async prev(autoplay = false) {
         if (this.queue.length === 0) return;
-        this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
-        const success = await this.loadTrack(this.queue[this.currentIndex]);
-        if (!success) {
-            return this.prev(autoplay);
-        }
-        if (autoplay) {
-            try {
-                await this.audio.play();
-            } catch (e) {
-                console.warn('Auto-play after prev failed', e);
+
+        const startIndex = this.currentIndex;
+        let attempts = 0;
+        const maxAttempts = this.queue.length;
+
+        while (attempts < maxAttempts) {
+            this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
+            const success = await this.loadTrack(this.queue[this.currentIndex]);
+            if (success) {
+                if (autoplay) {
+                    try {
+                        await this.audio.play();
+                    } catch (e) {
+                        console.warn('Auto-play after prev failed', e);
+                    }
+                }
+                return;
             }
+            attempts++;
+        }
+
+        console.error('Все треки в очереди недоступны');
+        this.pause();
+        if (this.ui) {
+            this.ui.updateCurrentTrack(null);
         }
     }
 
@@ -299,15 +299,13 @@ var Player = class Player {
 
         const selected = [];
         if (allowDuplicates) {
-            // Выбор с возможными повторениями
             for (let i = 0; i < count; i++) {
                 const randomIndex = Math.floor(Math.random() * availableTracks.length);
                 selected.push(availableTracks[randomIndex].id);
             }
         } else {
-            // Уникальный выбор (без повторений)
             if (count > availableTracks.length) {
-                count = availableTracks.length; // не запрашивать больше, чем есть
+                count = availableTracks.length;
             }
             const shuffled = this.shuffleArray([...availableTracks]);
             for (let i = 0; i < count; i++) {
@@ -325,7 +323,6 @@ var Player = class Player {
         } else {
             this.audio.volume = this.baseVolume / 100;
         }
-        // Синхронизируем все ползунки громкости в интерфейсе
         if (this.ui) {
             this.ui.syncVolumeSliders(percent);
         }
@@ -337,20 +334,18 @@ var Player = class Player {
         }
     }
 
-    // ---- Новый метод для немедленного воспроизведения ----
     async playNow(trackId) {
-        // Очищаем очередь и устанавливаем текущий трек
         this.queue = [trackId];
         this.currentIndex = 0;
         await this.db.setQueue(this.queue);
         if (this.ui) this.ui.renderQueue(this.queue);
         
-        // Загружаем и начинаем воспроизведение
-        await this.loadTrack(trackId);
-        this.play();
+        const success = await this.loadTrack(trackId);
+        if (success) {
+            this.play();
+        }
     }
 
-    // ---- Визуализатор ----
     initAudioContext() {
         if (this.audioCtx) return;
         try {

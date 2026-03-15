@@ -508,6 +508,48 @@ var UI = class UI {
         }
     }
 
+    /**
+     * Обновляет все прогресс-бары и индикаторы времени на всех страницах.
+     * @param {number} currentTime - текущее время воспроизведения
+     * @param {number} duration - общая длительность
+     */
+    updateAllProgressBars(currentTime, duration) {
+        if (!duration) return;
+        const percent = (currentTime / duration) * 100;
+
+        // Нижняя панель плеера
+        const bottomProgress = document.getElementById('progress');
+        if (bottomProgress) {
+            bottomProgress.value = percent;
+            if (window.updateRangeFill) window.updateRangeFill(bottomProgress);
+        }
+
+        // Страница деталей трека
+        const trackProgress = document.getElementById('track-progress');
+        if (trackProgress) {
+            trackProgress.value = percent;
+            if (window.updateRangeFill) window.updateRangeFill(trackProgress);
+        }
+
+        // Всплывающее окно (если есть)
+        const popupProgress = document.getElementById('popup-progress');
+        if (popupProgress) {
+            popupProgress.value = percent;
+            if (window.updateRangeFill) window.updateRangeFill(popupProgress);
+        }
+
+        // Обновление текста времени на странице деталей
+        const trackTime = document.getElementById('track-time');
+        if (trackTime) {
+            trackTime.textContent = `${utils.formatTime(currentTime)} / ${utils.formatTime(duration)}`;
+        }
+
+        // Если у всплывающего окна есть собственный метод обновления
+        if (this.popup && typeof this.popup.updateProgress === 'function') {
+            this.popup.updateProgress(currentTime, duration);
+        }
+    }
+
     async exportData() {
         const data = await this.db.exportData();
         const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
@@ -606,6 +648,9 @@ var UI = class UI {
                 const value = e.target.value;
                 this.themeManager.root.style.setProperty(varName, value);
                 await this.db.setSetting('theme:var:' + varName, value);
+
+                // Обновляем все ползунки, чтобы новый цвет применился к заливке
+                if (window.initAllRanges) window.initAllRanges();
             }, 200));
         });
 
@@ -617,6 +662,9 @@ var UI = class UI {
                 }
                 this.themeManager.applyPreset(this.themeManager.currentPreset);
                 this.renderThemeFineTuning();
+
+                // После сброса тоже обновляем ползунки
+                if (window.initAllRanges) window.initAllRanges();
             };
         }
     }
@@ -867,14 +915,27 @@ var UI = class UI {
         }
     }
 
+    /**
+     * Синхронизирует все ползунки громкости в интерфейсе.
+     * @param {number} percent - значение громкости от 0 до 100
+     */
     syncVolumeSliders(percent) {
         const volumeSlider = document.getElementById('volume');
-        if (volumeSlider) volumeSlider.value = percent;
+        if (volumeSlider) {
+            volumeSlider.value = percent;
+            if (window.updateRangeFill) window.updateRangeFill(volumeSlider);
+        }
 
         const trackVolume = document.getElementById('track-volume');
-        if (trackVolume) trackVolume.value = percent;
+        if (trackVolume) {
+            trackVolume.value = percent;
+            if (window.updateRangeFill) window.updateRangeFill(trackVolume);
+        }
 
         const popupVolume = document.getElementById('popup-volume');
-        if (popupVolume) popupVolume.value = percent;
+        if (popupVolume) {
+            popupVolume.value = percent;
+            if (window.updateRangeFill) window.updateRangeFill(popupVolume);
+        }
     }
 };

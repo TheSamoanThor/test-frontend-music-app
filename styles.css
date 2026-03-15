@@ -563,6 +563,7 @@ h2 {
     gap: 1rem;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
     cursor: pointer;
+    color: var(--text-color);
 }
 
 .player-cover {
@@ -575,6 +576,8 @@ h2 {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 .player-cover img,
 .player-cover canvas {
@@ -585,7 +588,8 @@ h2 {
 }
 .player-cover .no-cover {
     font-size: 2rem;
-    opacity: 0.5;
+    opacity: 0.7;
+    color: var(--primary-color);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -603,6 +607,7 @@ h2 {
     display: flex;
     align-items: center;
     gap: 0.3rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .player-controls {
@@ -614,7 +619,7 @@ h2 {
 
 .player-controls button {
     background: none;
-    border: none;
+    border: 1px solid transparent;
     font-size: 1.5rem;
     cursor: pointer;
     color: var(--text-color);
@@ -625,12 +630,16 @@ h2 {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 
-.player-controls button:hover {
+.player-controls button:hover,
+.player-controls button:focus {
     background-color: var(--primary-color);
     color: white;
+    border-color: var(--secondary-bg);
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 .player-controls input[type="range"] {
@@ -652,8 +661,8 @@ h2 {
     .tag-input,
     #detail-new-tag {
         width: 12.5%;
-        padding: 0.4rem 0.6rem; /* уменьшенные отступы */
-        box-sizing: border-box; /* чтобы padding не увеличивал ширину */
+        padding: 0.4rem 0.6rem;
+        box-sizing: border-box;
     }
 }
 
@@ -691,7 +700,6 @@ h2 {
     }
 
     /* ПРАВИЛА ДЛЯ УПРОЩЕНИЯ ИНТЕРФЕЙСА */
-    /* Скрываем лишние кнопки в треках библиотеки */
     .track-item .add-tag-btn,
     .track-item .exclude-btn,
     .track-item .add-to-playlist-btn,
@@ -699,14 +707,12 @@ h2 {
         display: none;
     }
 
-    /* Оставляем только кнопки: В очередь, Сейчас, Подробнее */
     .track-item .play-now-btn,
     .track-item .play-immediate-btn,
     .track-item .details-btn {
         display: inline-flex;
     }
 
-    /* Упрощаем панель плеера: скрываем ползунки громкости и прогресса */
     .player-bar #progress,
     .player-bar #volume {
         display: none;
@@ -715,14 +721,12 @@ h2 {
     .tag-input,
     #detail-new-tag {
         width: 25%;
-        padding: 0.4rem 0.6rem; /* уменьшенные отступы */
-        box-sizing: border-box; /* чтобы padding не увеличивал ширину */
+        padding: 0.4rem 0.6rem;
+        box-sizing: border-box;
     }
 }
 
-/* Стили для очень узких экранов (до 465px) */
 @media (max-width: 465px) {
-    /* Уменьшаем отступы в шапке и основном контейнере */
     header {
         padding: 0.5rem;
     }
@@ -736,7 +740,6 @@ h2 {
         font-size: 0.8rem;
     }
 
-    /* Навигация: кнопки занимают всю ширину и выстраиваются в колонку */
     .main-nav {
         flex-wrap: wrap;
         gap: 0.3rem;
@@ -751,7 +754,6 @@ h2 {
         font-size: 0.9rem;
     }
 
-    /* Основной контент */
     main {
         padding: 0.5rem;
     }
@@ -761,7 +763,6 @@ h2 {
         margin-bottom: 0.5rem;
     }
 
-    /* Поля фильтра и поиска */
     .filter-bar, .search-bar {
         flex-direction: column;
         gap: 0.3rem;
@@ -771,7 +772,6 @@ h2 {
         width: 100%;
     }
 
-    /* Элементы треков */
     .track-item, .queue-item, .playlist-item {
         padding: 0.5rem;
     }
@@ -796,7 +796,6 @@ h2 {
         padding: 0.1rem 0.3rem;
     }
 
-    /* Очередь */
     .queue-item {
         flex-direction: column;
         align-items: flex-start;
@@ -814,7 +813,6 @@ h2 {
         justify-content: flex-start;
     }
 
-    /* Плейлисты */
     .playlist-header {
         flex-direction: column;
         align-items: flex-start;
@@ -831,7 +829,6 @@ h2 {
         flex: 1;
     }
 
-    /* Футер (плеер) */
     .player-bar {
         padding: 0.5rem;
         gap: 0.5rem;
@@ -854,8 +851,8 @@ h2 {
     }
 
     .player-controls button {
-        width: 36px;
-        height: 36px;
+        width: 44px;
+        height: 44px;
         font-size: 1.2rem;
     }
 
@@ -863,7 +860,6 @@ h2 {
         min-width: 80px;
     }
 
-    /* Страница деталей трека */
     .track-detail-cover,
     .track-detail-cover.no-cover {
         max-width: 150px;
@@ -888,7 +884,6 @@ h2 {
         font-size: 1.5rem;
     }
 
-    /* Настройки */
     .setting-item {
         flex-direction: column;
         align-items: flex-start;
@@ -910,8 +905,6 @@ h2 {
         gap: 0.3rem;
     }
 
-    /* ПРАВИЛА ДЛЯ УПРОЩЕНИЯ ИНТЕРФЕЙСА */
-    /* Скрываем лишние кнопки в треках библиотеки */
     .track-item .add-tag-btn,
     .track-item .exclude-btn,
     .track-item .add-to-playlist-btn,
@@ -919,14 +912,12 @@ h2 {
         display: none;
     }
 
-    /* Оставляем только кнопки: В очередь, Сейчас, Подробнее */
     .track-item .play-now-btn,
     .track-item .play-immediate-btn,
     .track-item .details-btn {
         display: inline-flex;
     }
 
-    /* Упрощаем панель плеера: скрываем ползунки громкости и прогресса */
     .player-bar #progress,
     .player-bar #volume {
         display: none;
@@ -935,8 +926,40 @@ h2 {
     .tag-input,
     #detail-new-tag {
         width: 100%;
-        padding: 0.4rem 0.6rem; /* уменьшенные отступы */
-        box-sizing: border-box; /* чтобы padding не увеличивал ширину */
+        padding: 0.4rem 0.6rem;
+        box-sizing: border-box;
+    }
+
+    .player-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        padding: 0.5rem;
+        background-color: var(--player-bg);
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.2);
+    }
+
+    main {
+        padding-bottom: 80px;
+    }
+
+    .player-controls button {
+        width: 44px;
+        height: 44px;
+        font-size: 1.5rem;
+    }
+
+    .player-controls {
+        gap: 0.75rem;
+    }
+
+    .player-info {
+        font-size: 0.8rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }
 
@@ -1117,4 +1140,94 @@ h2 {
 .playback-buttons button:hover {
     background-color: var(--primary-color);
     color: white;
+}
+
+/* === УЛУЧШЕННАЯ СТИЛИЗАЦИЯ ПОЛЗУНКОВ (RANGE) === */
+input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    width: 100%;
+    cursor: pointer;
+    margin: 0;
+    padding: 0;
+    --range-track-height: 6px;
+    --range-thumb-size: 18px;
+}
+
+/* WebKit */
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: var(--range-track-height);
+    background: transparent;
+    border-radius: 3px;
+    border: none;
+    box-shadow: 0 0 0 1px var(--secondary-bg);
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
+    background: var(--primary-color);
+    border-radius: 50%;
+    margin-top: calc((var(--range-thumb-size) - var(--range-track-height)) / -2);
+    border: 2px solid var(--secondary-bg);
+    box-shadow: 0 0 0 2px var(--primary-color), 0 2px 8px rgba(0,0,0,0.3);
+    transition: transform 0.1s, background-color 0.2s;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    background: var(--text-color);
+}
+
+/* Firefox */
+input[type=range]::-moz-range-track {
+    width: 100%;
+    height: var(--range-track-height);
+    background: var(--border-color);
+    border-radius: 3px;
+    border: none;
+    box-shadow: 0 0 0 1px var(--secondary-bg);
+}
+
+input[type=range]::-moz-range-thumb {
+    width: var(--range-thumb-size);
+    height: var(--range-thumb-size);
+    background: var(--primary-color);
+    border-radius: 50%;
+    border: 2px solid var(--secondary-bg);
+    box-shadow: 0 0 0 2px var(--primary-color), 0 2px 8px rgba(0,0,0,0.3);
+    transition: transform 0.1s, background-color 0.2s;
+}
+
+input[type=range]::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    background: var(--text-color);
+}
+
+input[type=range]::-moz-range-progress {
+    height: var(--range-track-height);
+    background: var(--primary-color);
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px var(--secondary-bg);
+}
+
+input[type=range]::-moz-focus-outer {
+    border: 0;
+}
+
+/* Фокус */
+input[type=range]:focus {
+    outline: none;
+}
+input[type=range]:focus::-webkit-slider-runnable-track {
+    background: var(--primary-color);
+    opacity: 0.5;
+}
+input[type=range]:focus::-moz-range-track {
+    background: var(--primary-color);
+    opacity: 0.5;
 }

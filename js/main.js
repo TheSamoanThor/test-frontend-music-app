@@ -21,13 +21,19 @@
 
     await ui.loadThemeOverrides();
 
+    // Принудительно обновляем все ползунки, чтобы они применили загруженную тему
+    if (window.initAllRanges) window.initAllRanges();
+
     const savedVolume = await db.getSetting('volume') || 80;
     player.setVolume(savedVolume);
-    document.getElementById('volume').value = savedVolume;
+    const volumeSlider = document.getElementById('volume');
+    if (volumeSlider) volumeSlider.value = savedVolume;
 
-    document.getElementById('volume').addEventListener('change', async (e) => {
-        await db.setSetting('volume', e.target.value);
-    });
+    if (volumeSlider) {
+        volumeSlider.addEventListener('change', async (e) => {
+            await db.setSetting('volume', e.target.value);
+        });
+    }
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -38,22 +44,40 @@
 
     Router.init(ui, player);
 
-    document.getElementById('theme-select-settings').addEventListener('change', (e) => {
-        themeManager.applyPreset(e.target.value);
-        themeManager.saveToDB(db);
-        document.getElementById('theme-select').value = e.target.value;
-        ui.renderThemeFineTuning();
-    });
-    document.getElementById('custom-color-settings').addEventListener('input', utils.debounce((e) => {
-        themeManager.applyCustomColor(e.target.value);
-        themeManager.saveToDB(db);
-        document.getElementById('custom-color').value = e.target.value;
-        ui.renderThemeFineTuning();
-    }, 500));
-    document.getElementById('export-btn-settings').addEventListener('click', () => ui.exportData());
-    document.getElementById('import-btn-settings').addEventListener('click', () => ui.importData());
+    const themeSelectSettings = document.getElementById('theme-select-settings');
+    if (themeSelectSettings) {
+        themeSelectSettings.addEventListener('change', (e) => {
+            themeManager.applyPreset(e.target.value);
+            themeManager.saveToDB(db);
+            const themeSelect = document.getElementById('theme-select');
+            if (themeSelect) themeSelect.value = e.target.value;
+            ui.renderThemeFineTuning();
+        });
+    }
 
-    document.getElementById('back-to-library').addEventListener('click', () => {
-        Router.navigate('library');
-    });
+    const customColorSettings = document.getElementById('custom-color-settings');
+    if (customColorSettings) {
+        customColorSettings.addEventListener('input', utils.debounce((e) => {
+            themeManager.applyCustomColor(e.target.value);
+            themeManager.saveToDB(db);
+            ui.renderThemeFineTuning();
+        }, 500));
+    }
+
+    const exportBtnSettings = document.getElementById('export-btn-settings');
+    if (exportBtnSettings) {
+        exportBtnSettings.addEventListener('click', () => ui.exportData());
+    }
+
+    const importBtnSettings = document.getElementById('import-btn-settings');
+    if (importBtnSettings) {
+        importBtnSettings.addEventListener('click', () => ui.importData());
+    }
+
+    const backToLibrary = document.getElementById('back-to-library');
+    if (backToLibrary) {
+        backToLibrary.addEventListener('click', () => {
+            Router.navigate('library');
+        });
+    }
 })();

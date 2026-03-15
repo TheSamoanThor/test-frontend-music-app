@@ -38,7 +38,7 @@ var FileHandler = class FileHandler {
                         id,
                         name: file.name,
                         path: path + '/' + file.name,
-                        handle: entry,
+                        handle: entry, // сохраняем FileSystemFileHandle
                         duration: 0
                     };
                     tracks.push(track);
@@ -93,7 +93,7 @@ var FileHandler = class FileHandler {
                         id,
                         name: file.name,
                         path: file.webkitRelativePath || file.name,
-                        file: file,
+                        file: file, // сохраняем сам файл (для fallback)
                         duration: 0
                     };
                     tracks.push(track);
@@ -110,25 +110,43 @@ var FileHandler = class FileHandler {
         });
     }
 
+    /**
+     * Получение файла для трека.
+     * Если доступ через handle потерян, пытаемся запросить разрешение заново.
+     * @param {Object} track - объект трека
+     * @returns {Promise<File|null>}
+     */
     async getFileForTrack(track) {
+        // Если есть handle (FileSystemFileHandle)
         if (track.handle) {
             try {
+                // Пробуем получить файл напрямую
                 return await track.handle.getFile();
             } catch (err) {
-                if (err.name === 'NotAllowedError' && track.handle.requestPermission) {
+                console.warn(`Доступ к файлу "${track.name}" потерян, запрашиваем разрешение...`, err);
+                // Пытаемся запросить разрешение (поддерживается не во всех браузерах)
+                if (track.handle.requestPermission) {
                     try {
                         const permission = await track.handle.requestPermission({ mode: 'read' });
                         if (permission === 'granted') {
+                            // Разрешение получено, пробуем снова
                             return await track.handle.getFile();
+                        } else {
+                            console.warn(`Пользователь отказал в доступе к файлу "${track.name}"`);
+                            // Удаляем трек из библиотеки или помечаем как недоступный? Пока просто вернём null.
                         }
                     } catch (permErr) {
-                        console.error('Не удалось получить разрешение:', permErr);
+                        console.error('Ошибка при запросе разрешения:', permErr);
                     }
+                } else {
+                    console.warn('requestPermission не поддерживается для этого handle');
                 }
-                console.error('Ошибка получения файла:', err);
+                // Если ничего не помогло, возвращаем null
                 return null;
             }
-        } else if (track.file) {
+        } 
+        // Если есть прямой объект File (для fallback режима pickFiles)
+        else if (track.file) {
             return track.file;
         }
         return null;
