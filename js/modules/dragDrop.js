@@ -7,31 +7,25 @@ const DragDrop = {
         const queueList = document.getElementById('queue-list');
         if (!queueList) return;
 
-        // Уничтожаем предыдущий экземпляр Sortable, если он есть
         if (this.sortable) {
             this.sortable.destroy();
             this.sortable = null;
         }
 
-        // Создаём новый Sortable для текущего списка
         this.sortable = new Sortable(queueList, {
             animation: 150,
             onEnd: async (evt) => {
-                // Получаем новый порядок ID из DOM
                 const items = Array.from(evt.target.children).map(li => li.dataset.id);
                 if (items.length === 0) return;
 
-                // Сохраняем новый порядок в плеере и в базе данных
                 this.ui.player.queue = items;
                 await this.ui.db.setQueue(items);
 
-                // Корректируем текущий индекс, если текущий трек переместился
                 if (this.ui.player.currentTrack) {
                     const newIndex = items.indexOf(this.ui.player.currentTrack.id);
                     this.ui.player.currentIndex = newIndex;
                 }
 
-                // Обновляем data-index у кнопок управления внутри каждого элемента очереди
                 this.updateQueueItemIndices();
             }
         });

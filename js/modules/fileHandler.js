@@ -3,8 +3,8 @@ var FileHandler = class FileHandler {
         this.db = db;
         this.isFileSystemAccessSupported = 'showDirectoryPicker' in window;
         this.audioExtensions = ['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.wma', '.opus'];
-        this.fallbackMode = false; // true = использовать input file вместо showDirectoryPicker
-        this.onAccessLost = null; // колбэк при потере доступа к файлу
+        this.fallbackMode = false;
+        this.onAccessLost = null;
     }
 
     isFallbackMode() {
@@ -16,7 +16,6 @@ var FileHandler = class FileHandler {
     }
 
     async pickDirectory() {
-        // Если в fallback-режиме или не поддерживается showDirectoryPicker, используем pickFiles
         if (this.fallbackMode || !this.isFileSystemAccessSupported) {
             return this.pickFiles();
         }
@@ -26,10 +25,8 @@ var FileHandler = class FileHandler {
             return tracks;
         } catch (err) {
             console.error('Ошибка выбора папки', err);
-            // Если ошибка связана с разрешением или отменой, можем спросить пользователя, хочет ли он переключиться на файлы
             if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
                 if (this.onAccessLost) {
-                    // Вызовем колбэк с null, чтобы показать диалог о переключении режима
                     this.onAccessLost(null);
                 }
             }
@@ -53,7 +50,7 @@ var FileHandler = class FileHandler {
                         id,
                         name: file.name,
                         path: path + '/' + file.name,
-                        handle: entry, // сохраняем FileSystemFileHandle
+                        handle: entry,
                         duration: 0
                     };
                     tracks.push(track);
@@ -105,7 +102,7 @@ var FileHandler = class FileHandler {
                         id,
                         name: file.name,
                         path: file.webkitRelativePath || file.name,
-                        file: file, // сохраняем сам файл
+                        file: file,
                         duration: 0
                     };
                     tracks.push(track);

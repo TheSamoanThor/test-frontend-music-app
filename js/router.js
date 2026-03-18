@@ -13,18 +13,14 @@ const Router = {
         const hash = window.location.hash.slice(1) || 'library';
         const [path, param] = hash.split('/');
         
-        // Скрываем все страницы
         document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
 
-        // Убираем активный класс у всех кнопок навигации
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
-        // Если уходим со страницы трека, отписываем визуализатор деталей
         if (!hash.startsWith('track/') && this.ui) {
             this.ui.unregisterTrackDetailVisualizer();
         }
 
-        // Активируем соответствующую кнопку
         const activeBtn = document.querySelector(`.nav-btn[data-page="${path}"]`);
         if (activeBtn) activeBtn.classList.add('active');
 

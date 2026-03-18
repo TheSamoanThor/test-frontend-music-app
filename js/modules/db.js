@@ -56,7 +56,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Треки ----
     async addTrack(track) {
         const tx = this.db.transaction(this.stores.tracks, 'readwrite');
         const store = tx.objectStore(this.stores.tracks);
@@ -97,7 +96,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Очередь ----
     async getQueue() {
         const tx = this.db.transaction(this.stores.queue, 'readonly');
         const store = tx.objectStore(this.stores.queue);
@@ -118,7 +116,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Теги ----
     async getTags(trackId) {
         const tx = this.db.transaction(this.stores.tags, 'readonly');
         const store = tx.objectStore(this.stores.tags);
@@ -139,7 +136,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Настройки ----
     async getSetting(key) {
         const tx = this.db.transaction(this.stores.settings, 'readonly');
         const store = tx.objectStore(this.stores.settings);
@@ -170,7 +166,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Громкость для тегов ----
     async getTagVolume(tag) {
         const tx = this.db.transaction(this.stores.tagVolumes, 'readonly');
         const store = tx.objectStore(this.stores.tagVolumes);
@@ -211,7 +206,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Плейлисты ----
     async getAllPlaylists() {
         const tx = this.db.transaction(this.stores.playlists, 'readonly');
         const store = tx.objectStore(this.stores.playlists);
@@ -259,7 +253,6 @@ var Database = class Database {
         });
     }
 
-    // ---- Экспорт / Импорт ----
     async exportData() {
         const stores = [
             this.stores.tracks,
@@ -320,7 +313,6 @@ var Database = class Database {
         }
     }
 
-    // ---- Очистка всех данных (кроме настроек) ----
     async clearAllData() {
         const stores = [
             this.stores.tracks,

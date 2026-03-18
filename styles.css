@@ -10,7 +10,6 @@
     --shadow: 0 2px 8px rgba(0,0,0,0.1);
     --border-radius: 8px;
 
-    /* Scrollbar variables */
     --scrollbar-track: var(--bg-color);
     --scrollbar-thumb: var(--border-color);
     --scrollbar-thumb-hover: var(--primary-color);
@@ -32,7 +31,6 @@ body {
     overflow: hidden;
 }
 
-/* Scrollbar styles (WebKit) */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -48,7 +46,6 @@ body {
     background: var(--scrollbar-thumb-hover);
 }
 
-/* Scrollbar (Firefox) */
 * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -268,7 +265,6 @@ h2 {
     cursor: pointer;
 }
 
-/* Стили для плейлистов */
 .playlist-controls {
     margin-bottom: 1rem;
 }
@@ -325,7 +321,6 @@ h2 {
     font-size: 0.8rem;
 }
 
-/* Popup стили */
 .popup {
     position: fixed;
     top: 0;
@@ -476,7 +471,6 @@ h2 {
     cursor: pointer;
 }
 
-/* Остальные стили */
 .settings-section {
     background-color: var(--secondary-bg);
     border: 1px solid var(--border-color);
@@ -649,7 +643,6 @@ h2 {
     max-width: 250px;
 }
 
-/* Иконки */
 .icon {
     width: 1em;
     height: 1em;
@@ -658,9 +651,6 @@ h2 {
     vertical-align: middle;
 }
 
-/* ========== УЛУЧШЕННАЯ АДАПТИВНОСТЬ ========== */
-
-/* Планшеты и небольшие десктопы */
 @media (max-width: 1040px) {
     .tag-input,
     #detail-new-tag {
@@ -670,7 +660,6 @@ h2 {
     }
 }
 
-/* Ширина от 769px до 1040px уже покрыто выше, но для toolbar добавим промежуточный */
 @media (max-width: 900px) {
     .toolbar button, .toolbar select {
         padding: 0.5rem 0.8rem;
@@ -678,7 +667,6 @@ h2 {
     }
 }
 
-/* Типичные планшеты в портретной ориентации */
 @media (max-width: 768px) {
     .toolbar {
         flex-direction: column;
@@ -712,7 +700,6 @@ h2 {
         font-size: 1rem;
     }
 
-    /* ПРАВИЛА ДЛЯ УПРОЩЕНИЯ ИНТЕРФЕЙСА */
     .track-item .add-tag-btn,
     .track-item .exclude-btn,
     .track-item .add-to-playlist-btn,
@@ -739,9 +726,7 @@ h2 {
     }
 }
 
-/* Узкие экраны (мобильные телефоны) */
 @media (max-width: 600px) {
-    /* Уменьшаем отступы и размеры в toolbar */
     .toolbar {
         gap: 0.5rem;
     }
@@ -749,26 +734,21 @@ h2 {
         padding: 0.4rem 0.7rem;
         font-size: 0.8rem;
     }
-    /* Скрываем импорт/экспорт/тему, так как на 600px они могут не помещаться */
     .toolbar > #import-btn,
     .toolbar > #export-btn,
     .toolbar > #theme-select {
         display: none;
     }
-    /* Кнопка выбора папки может стать на всю ширину */
     #select-music-btn {
         width: 100%;
     }
-    /* Навигационные кнопки могут быть меньше */
     .nav-btn {
         padding: 0.5rem;
         font-size: 0.9rem;
     }
-    /* Увеличиваем padding-bottom main, чтобы контент не перекрывался плеером */
     main {
         padding-bottom: 10px;
     }
-    /* Страница деталей трека */
     .track-detail {
         max-height: calc(100vh - 200px);
         overflow-y: auto;
@@ -783,7 +763,6 @@ h2 {
         width: 100%;
         margin: 0.2rem 0;
     }
-    /* Блок управления на странице деталей */
     .track-playback-controls {
         margin-top: 1rem;
         padding: 0.8rem;
@@ -802,7 +781,6 @@ h2 {
     }
 }
 
-/* Очень узкие экраны (меньше 465px) */
 @media (max-width: 465px) {
     header {
         padding: 0.5rem;
@@ -817,7 +795,6 @@ h2 {
         font-size: 0.8rem;
     }
 
-    /* Кнопки импорта/экспорта и тема уже скрыты на 600px, но дублируем для надёжности */
     .toolbar > #import-btn,
     .toolbar > #export-btn,
     .toolbar > #theme-select {
@@ -840,7 +817,7 @@ h2 {
 
     main {
         padding: 0.5rem;
-        padding-bottom: 160px; /* Увеличено для лучшей прокрутки над фиксированным плеером */
+        padding-bottom: 160px;
     }
 
     h2 {
@@ -1022,7 +999,6 @@ h2 {
         box-sizing: border-box;
     }
 
-    /* Дополнительные улучшения для страницы деталей */
     .track-detail {
         max-height: calc(100vh - 180px);
         overflow-y: auto;
@@ -1037,7 +1013,6 @@ h2 {
     }
 }
 
-/* Тонкая настройка темы */
 .theme-fine-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1071,7 +1046,6 @@ h2 {
     margin-top: 1rem;
 }
 
-/* Теги с кнопками удаления */
 .tag-badge {
     display: inline-flex;
     align-items: center;
@@ -1106,7 +1080,6 @@ h2 {
     color: white;
 }
 
-/* Страница деталей трека */
 .track-detail {
     display: flex;
     flex-direction: column;
@@ -1216,7 +1189,6 @@ h2 {
     color: white;
 }
 
-/* === УЛУЧШЕННАЯ СТИЛИЗАЦИЯ ПОЛЗУНКОВ (RANGE) === */
 input[type=range] {
     -webkit-appearance: none;
     appearance: none;
@@ -1229,7 +1201,6 @@ input[type=range] {
     --range-thumb-size: 18px;
 }
 
-/* WebKit */
 input[type=range]::-webkit-slider-runnable-track {
     width: 100%;
     height: var(--range-track-height);
@@ -1257,7 +1228,6 @@ input[type=range]::-webkit-slider-thumb:hover {
     background: var(--text-color);
 }
 
-/* Firefox */
 input[type=range]::-moz-range-track {
     width: 100%;
     height: var(--range-track-height);
@@ -1293,7 +1263,6 @@ input[type=range]::-moz-focus-outer {
     border: 0;
 }
 
-/* Фокус */
 input[type=range]:focus {
     outline: none;
 }

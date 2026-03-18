@@ -10,10 +10,8 @@ var UI = class UI {
         this.detailPictureUrl = null;
         this.playerVisualizerCallback = null;
         this.trackProgressHandler = null;
-        // Для визуализатора на странице деталей
         this.trackDetailVisualizerCallback = null;
 
-        // Привязываем колбэк потери доступа
         this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
 
         this.initEventListeners();
@@ -63,7 +61,6 @@ var UI = class UI {
         document.getElementById('add-random').addEventListener('click', () => this.player.addRandomFromLibrary());
         document.getElementById('add-random-10').addEventListener('click', () => this.player.addRandomTracks(10));
 
-        // Глобальный обработчик кликов для удаления тегов и перехода на страницу трека
         document.addEventListener('click', async (e) => {
             if (e.target.classList.contains('remove-tag-btn') || e.target.closest('.remove-tag-btn')) {
                 const btn = e.target.closest('.remove-tag-btn');
@@ -146,12 +143,10 @@ var UI = class UI {
             trackVolume.addEventListener('input', (e) => this.player.setVolume(e.target.value));
         }
 
-        // Кнопки переключения режима доступа
         document.getElementById('switch-to-file-picker')?.addEventListener('click', () => this.switchToFilePickerMode());
         document.getElementById('switch-to-folder-picker')?.addEventListener('click', () => this.switchToFolderPickerMode());
     }
 
-    // ----- Новые методы для обработки потери доступа и переключения режимов -----
     async handleFileAccessLost(track) {
         if (track === null) {
             if (confirm('Не удалось получить доступ к папке. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)')) {
@@ -161,7 +156,6 @@ var UI = class UI {
             if (confirm(`Доступ к файлу "${track.name}" потерян. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)`)) {
                 await this.switchToFilePickerMode();
             } else {
-                // Ничего не делаем
             }
         }
     }
@@ -193,7 +187,6 @@ var UI = class UI {
         await this.renderLibrary();
         Router.handleRoute();
     }
-    // -------------------------------------------------------------------------
 
     registerPlayerVisualizer() {
         if (this.player) {
@@ -213,7 +206,6 @@ var UI = class UI {
         ctx.clearRect(0, 0, width, height);
         if (!dataArray) return;
 
-        // Получаем цвет текста из текущей темы
         const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#212529';
 
         const player = this.player;
@@ -301,7 +293,6 @@ var UI = class UI {
         ctx.globalAlpha = 1.0;
     }
 
-    // ===== Визуализатор для страницы деталей =====
     registerTrackDetailVisualizer() {
         if (this.trackDetailVisualizerCallback) return;
         this.trackDetailVisualizerCallback = (dataArray) => {
@@ -451,7 +442,7 @@ var UI = class UI {
 
         for (let track of filtered) {
             const tags = await this.db.getTags(track.id);
-            const isExcluded = tags.includes('🚫 excluded');
+            const isExcluded = tags.includes('excluded');
             const li = document.createElement('li');
             li.className = 'track-item';
             li.setAttribute('draggable', 'true');
@@ -502,7 +493,7 @@ var UI = class UI {
                 e.stopPropagation();
                 const id = e.target.closest('button').dataset.id;
                 const tags = await this.db.getTags(id);
-                const excludedTag = '🚫 excluded';
+                const excludedTag = 'excluded';
                 if (tags.includes(excludedTag)) {
                     const newTags = tags.filter(t => t !== excludedTag);
                     await this.db.setTags(id, newTags);
@@ -803,7 +794,7 @@ var UI = class UI {
 
         for (let track of allTracks) {
             const tags = await this.db.getTags(track.id);
-            if (tags.includes('🚫 excluded')) {
+            if (tags.includes('excluded')) {
                 const li = document.createElement('li');
                 li.className = 'excluded-item';
                 li.innerHTML = `
@@ -818,7 +809,7 @@ var UI = class UI {
             btn.addEventListener('click', async (e) => {
                 const id = e.target.closest('button').dataset.id;
                 const tags = await this.db.getTags(id);
-                const newTags = tags.filter(t => t !== '🚫 excluded');
+                const newTags = tags.filter(t => t !== 'excluded');
                 await this.db.setTags(id, newTags);
                 this.syncSettingsPage();
             });
@@ -826,7 +817,6 @@ var UI = class UI {
 
         await this.renderThemeFineTuning();
 
-        // ===== Синхронизация настроек визуализатора =====
         const enabledCheck = document.getElementById('visualizer-enabled');
         const typeSelect = document.getElementById('visualizer-type');
         const sensitivityRange = document.getElementById('visualizer-sensitivity');
@@ -963,7 +953,7 @@ var UI = class UI {
         }
 
         const tags = await this.db.getTags(trackId);
-        const isExcluded = tags.includes('🚫 excluded');
+        const isExcluded = tags.includes('excluded');
 
         const file = await this.fileHandler.getFileForTrack(track);
         let pictureUrl = null;
@@ -976,7 +966,6 @@ var UI = class UI {
             ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${trackId}" data-tag="${t}"><svg class="icon"><use href="#icon-close"></use></svg></button></span>`).join(' ')
             : 'нет';
 
-        // Медиа-блок с обложкой/визуализатором
         let mediaHtml;
         if (pictureUrl) {
             mediaHtml = `
@@ -1023,7 +1012,6 @@ var UI = class UI {
             this.detailPictureUrl = pictureUrl;
         }
 
-        // Управление видимостью canvas и регистрация визуализатора
         const img = document.getElementById('track-detail-cover');
         const canvas = document.getElementById('track-detail-visualizer');
         const noCoverDiv = document.querySelector('.track-detail-media .no-cover');
@@ -1043,7 +1031,6 @@ var UI = class UI {
                     this.registerTrackDetailVisualizer();
                 }
             };
-            // Если изображение уже загружено, onload может не сработать, поэтому проверим
             if (img.complete) {
                 if (img.naturalWidth > 0) {
                     img.style.display = 'block';
@@ -1059,7 +1046,6 @@ var UI = class UI {
                 }
             }
         } else {
-            // Нет обложки, показываем canvas
             if (img) img.style.display = 'none';
             if (canvas) canvas.style.display = 'block';
             if (noCoverDiv) noCoverDiv.style.display = 'none';
@@ -1081,7 +1067,7 @@ var UI = class UI {
         });
 
         document.getElementById('detail-toggle-exclude').addEventListener('click', async () => {
-            const excludedTag = '🚫 excluded';
+            const excludedTag = 'excluded';
             if (tags.includes(excludedTag)) {
                 const newTags = tags.filter(t => t !== excludedTag);
                 await this.db.setTags(trackId, newTags);

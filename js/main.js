@@ -15,7 +15,7 @@
     const ui = new UI(db, player, fileHandler, themeManager);
 
     player.setUI(ui);
-    await player.loadVisualizerSettings(); // <-- загружаем настройки визуализатора
+    await player.loadVisualizerSettings();
 
     ui.registerPlayerVisualizer();
 

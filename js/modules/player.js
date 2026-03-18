@@ -10,10 +10,9 @@ var Player = class Player {
         this.currentIndex = -1;
         this.isPlaying = false;
         this.ui = null;
-        this.baseVolume = 80; // 0-100
-        this.currentObjectUrl = null; // для отслеживания созданных URL
+        this.baseVolume = 80;
+        this.currentObjectUrl = null;
 
-        // Для визуализатора
         this.audioCtx = null;
         this.analyser = null;
         this.source = null;
@@ -21,7 +20,6 @@ var Player = class Player {
         this.visualizerActive = false;
         this.rafId = null;
 
-        // Настройки визуализатора (без цвета)
         this.visualizerType = 'bars';
         this.visualizerSensitivity = 1.0;
         this.visualizerBarCount = 16;
@@ -90,7 +88,6 @@ var Player = class Player {
         const file = await this.fileHandler.getFileForTrack(track);
         if (!file) {
             console.warn(`File not accessible for track: ${track.name} (${trackId})`);
-            // Удаляем недоступный трек из очереди
             const index = this.queue.indexOf(trackId);
             if (index !== -1) {
                 await this.removeFromQueue(index);
@@ -295,7 +292,7 @@ var Player = class Player {
         const availableTracks = [];
         for (let track of allTracks) {
             const tags = await this.db.getTags(track.id);
-            if (!tags.includes('🚫 excluded')) {
+            if (!tags.includes('excluded')) {
                 availableTracks.push(track);
             }
         }
@@ -353,7 +350,6 @@ var Player = class Player {
         }
     }
 
-    // ===== Визуализатор =====
     initAudioContext() {
         if (this.audioCtx) return;
         try {
@@ -410,7 +406,6 @@ var Player = class Player {
         if (index !== -1) this.visualizerCallbacks.splice(index, 1);
     }
 
-    // ===== Настройки визуализатора =====
     async loadVisualizerSettings() {
         this.visualizerEnabled = await this.db.getSetting('visualizer_enabled') !== false;
         this.visualizerType = await this.db.getSetting('visualizer_type') || 'bars';

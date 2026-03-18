@@ -5,85 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Player</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Sortable для drag & drop очереди -->
     <script src="js/lib/sortable.min.js"></script>
-    <!-- Библиотека для чтения метаданных (обложки) -->
     <script src="js/lib/jsmediatags.min.js"></script>
 </head>
 <body>
-    <!-- SVG Sprite (без изменений) -->
     <svg style="display: none;">
         <defs>
-            <!-- Иконки -->
+            <!-- Папка -->
             <symbol id="icon-folder" viewBox="0 0 24 24">
                 <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
             </symbol>
+            <!-- Библиотека (музыка) -->
             <symbol id="icon-library" viewBox="0 0 24 24">
                 <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/>
             </symbol>
+            <!-- Очередь -->
             <symbol id="icon-queue" viewBox="0 0 24 24">
                 <path d="M3 13h8V11H3v2zm0 4h8v-2H3v2zm0-8h8V7H3v2zm10 4h8v-2h-8v2zm0 4h8v-2h-8v2zm0-10v2h8V7h-8z"/>
             </symbol>
+            <!-- Плейлист -->
             <symbol id="icon-playlist" viewBox="0 0 24 24">
                 <path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/>
             </symbol>
+            <!-- Настройки -->
             <symbol id="icon-settings" viewBox="0 0 24 24">
                 <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
             </symbol>
+            <!-- Импорт -->
             <symbol id="icon-import" viewBox="0 0 24 24">
                 <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
             </symbol>
+            <!-- Экспорт -->
             <symbol id="icon-export" viewBox="0 0 24 24">
-                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                <path d="M5 15h4v6h6v-6h4l-7-7-7 7zM5 4v2h14V4H5z"/>
             </symbol>
+            <!-- Перемешать -->
             <symbol id="icon-shuffle" viewBox="0 0 24 24">
-                <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm0 9.41L8.41 20 10 21.59l6.09-6.09-1.59-1.59z"/>
+                <path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.45 20 9.5V4h-5.5zm.73 9.72l-1.41 1.41 3.13 3.13L15 20h5.5v-5.5l-2.04 2.04-3.23-3.23z"/>
             </symbol>
+            <!-- Корзина -->
             <symbol id="icon-trash" viewBox="0 0 24 24">
                 <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
             </symbol>
+            <!-- Кубик (случайный) -->
             <symbol id="icon-dice" viewBox="0 0 24 24">
                 <path d="M3 3v18h18V3H3zm6 14.5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm6 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm0-6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
             </symbol>
+            <!-- Нота -->
             <symbol id="icon-note" viewBox="0 0 24 24">
                 <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
             </symbol>
+            <!-- Стрелка влево -->
             <symbol id="icon-arrow-left" viewBox="0 0 24 24">
                 <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
             </symbol>
+            <!-- Play -->
             <symbol id="icon-play" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
             </symbol>
+            <!-- Pause -->
             <symbol id="icon-pause" viewBox="0 0 24 24">
                 <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
             </symbol>
+            <!-- Предыдущий -->
             <symbol id="icon-prev" viewBox="0 0 24 24">
                 <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
             </symbol>
+            <!-- Следующий -->
             <symbol id="icon-next" viewBox="0 0 24 24">
                 <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
             </symbol>
+            <!-- Тег -->
             <symbol id="icon-tag" viewBox="0 0 24 24">
                 <path d="M20 4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-2 6h-4v2h4v2h-4v2h4v2h-4v-2h-2v2h-2V8h2v2h2V8h2v2z"/>
             </symbol>
+            <!-- Плюс -->
             <symbol id="icon-plus" viewBox="0 0 24 24">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
             </symbol>
+            <!-- Запрет (исключить) -->
             <symbol id="icon-ban" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8 0-1.85.63-3.55 1.69-4.9L16.9 18.31C15.55 19.37 13.85 20 12 20zm6.31-3.1L7.1 5.69C8.45 4.63 10.15 4 12 4c4.42 0 8 3.58 8 8 0 1.85-.63 3.55-1.69 4.9z"/>
             </symbol>
+            <!-- Галочка -->
             <symbol id="icon-check" viewBox="0 0 24 24">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
             </symbol>
+            <!-- Информация -->
             <symbol id="icon-info" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
             </symbol>
+            <!-- Крестик (закрыть) -->
             <symbol id="icon-close" viewBox="0 0 24 24">
                 <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
             </symbol>
+            <!-- Стрелка вверх -->
             <symbol id="icon-arrow-up" viewBox="0 0 24 24">
                 <path d="M7 14l5-5 5 5z"/>
             </symbol>
+            <!-- Стрелка вниз -->
             <symbol id="icon-arrow-down" viewBox="0 0 24 24">
                 <path d="M7 10l5 5 5-5z"/>
             </symbol>
@@ -234,7 +254,6 @@
                     <ul id="excluded-tracks-list" class="excluded-list"></ul>
                 </div>
 
-                <!-- Новая секция: Визуализатор (без поля цвета) -->
                 <div class="settings-section">
                     <h3>Визуализатор</h3>
                     <div class="setting-item">
@@ -265,13 +284,11 @@
                 </div>
             </div>
 
-            <!-- Страница деталей трека -->
             <div class="page" id="page-track">
                 <h2>
                     <svg class="icon"><use href="#icon-note"></use></svg> Детали трека
                 </h2>
                 <div id="track-detail-container"></div>
-                <!-- Блок управления, видимый только для текущего трека -->
                 <div id="track-playback-controls" class="track-playback-controls hidden">
                     <div class="playback-progress">
                         <input type="range" id="track-progress" value="0" min="0" max="100" step="0.1">
@@ -337,7 +354,6 @@
     <script src="js/router.js"></script>
     <script src="js/main.js"></script>
 
-    <!-- Скрипт для динамического заполнения прогресс-баров в WebKit -->
     <script>
       (function() {
         'use strict';
