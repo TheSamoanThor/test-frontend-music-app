@@ -21,6 +21,13 @@ var Player = class Player {
         this.visualizerActive = false;
         this.rafId = null;
 
+        // Настройки визуализатора (без цвета)
+        this.visualizerType = 'bars';
+        this.visualizerSensitivity = 1.0;
+        this.visualizerBarCount = 16;
+        this.visualizerSmoothing = 0.5;
+        this.visualizerEnabled = true;
+
         this.initAudioEvents();
     }
 
@@ -83,7 +90,7 @@ var Player = class Player {
         const file = await this.fileHandler.getFileForTrack(track);
         if (!file) {
             console.warn(`File not accessible for track: ${track.name} (${trackId})`);
-            // Удаляем недоступный трек из очереди, чтобы избежать зацикливания
+            // Удаляем недоступный трек из очереди
             const index = this.queue.indexOf(trackId);
             if (index !== -1) {
                 await this.removeFromQueue(index);
@@ -346,12 +353,14 @@ var Player = class Player {
         }
     }
 
+    // ===== Визуализатор =====
     initAudioContext() {
         if (this.audioCtx) return;
         try {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             this.analyser = this.audioCtx.createAnalyser();
             this.analyser.fftSize = 256;
+            this.analyser.smoothingTimeConstant = this.visualizerSmoothing;
             this.source = this.audioCtx.createMediaElementSource(this.audio);
             this.source.connect(this.analyser);
             this.analyser.connect(this.audioCtx.destination);
@@ -361,6 +370,7 @@ var Player = class Player {
     }
 
     startVisualizer() {
+        if (!this.visualizerEnabled) return;
         if (!this.analyser) {
             this.initAudioContext();
         }
@@ -398,5 +408,25 @@ var Player = class Player {
     unregisterVisualizerCallback(callback) {
         const index = this.visualizerCallbacks.indexOf(callback);
         if (index !== -1) this.visualizerCallbacks.splice(index, 1);
+    }
+
+    // ===== Настройки визуализатора =====
+    async loadVisualizerSettings() {
+        this.visualizerEnabled = await this.db.getSetting('visualizer_enabled') !== false;
+        this.visualizerType = await this.db.getSetting('visualizer_type') || 'bars';
+        this.visualizerSensitivity = parseFloat(await this.db.getSetting('visualizer_sensitivity') || '1.0');
+        this.visualizerBarCount = parseInt(await this.db.getSetting('visualizer_bar_count') || '16');
+        this.visualizerSmoothing = parseFloat(await this.db.getSetting('visualizer_smoothing') || '0.5');
+        if (this.analyser) {
+            this.analyser.smoothingTimeConstant = this.visualizerSmoothing;
+        }
+    }
+
+    async saveVisualizerSettings() {
+        await this.db.setSetting('visualizer_enabled', this.visualizerEnabled);
+        await this.db.setSetting('visualizer_type', this.visualizerType);
+        await this.db.setSetting('visualizer_sensitivity', this.visualizerSensitivity);
+        await this.db.setSetting('visualizer_bar_count', this.visualizerBarCount);
+        await this.db.setSetting('visualizer_smoothing', this.visualizerSmoothing);
     }
 };

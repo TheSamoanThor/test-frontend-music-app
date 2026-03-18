@@ -19,6 +19,11 @@ const Router = {
         // Убираем активный класс у всех кнопок навигации
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
+        // Если уходим со страницы трека, отписываем визуализатор деталей
+        if (!hash.startsWith('track/') && this.ui) {
+            this.ui.unregisterTrackDetailVisualizer();
+        }
+
         // Активируем соответствующую кнопку
         const activeBtn = document.querySelector(`.nav-btn[data-page="${path}"]`);
         if (activeBtn) activeBtn.classList.add('active');
@@ -32,7 +37,7 @@ const Router = {
                 document.getElementById('page-queue').classList.remove('hidden');
                 this.ui.renderQueue(this.player.queue);
                 break;
-            case 'playlists': // новая страница
+            case 'playlists':
                 document.getElementById('page-playlists').classList.remove('hidden');
                 this.ui.renderPlaylists();
                 break;

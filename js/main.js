@@ -3,7 +3,6 @@
     await db.init();
 
     const fileHandler = new FileHandler(db);
-    // Если showDirectoryPicker не поддерживается, сразу переходим в fallback-режим
     if (!fileHandler.isFileSystemAccessSupported) {
         fileHandler.setFallbackMode(true);
         alert('Ваш браузер не поддерживает прямой выбор папки. Будет использован режим выбора отдельных файлов.');
@@ -16,8 +15,8 @@
     const ui = new UI(db, player, fileHandler, themeManager);
 
     player.setUI(ui);
+    await player.loadVisualizerSettings(); // <-- загружаем настройки визуализатора
 
-    // Регистрируем визуализатор для плеера
     ui.registerPlayerVisualizer();
 
     DragDrop.initQueue(ui);
@@ -27,7 +26,6 @@
 
     await ui.loadThemeOverrides();
 
-    // Принудительно обновляем все ползунки, чтобы они применили загруженную тему
     if (window.initAllRanges) window.initAllRanges();
 
     const savedVolume = await db.getSetting('volume') || 80;

@@ -11,7 +11,7 @@
     <script src="js/lib/jsmediatags.min.js"></script>
 </head>
 <body>
-    <!-- SVG Sprite -->
+    <!-- SVG Sprite (без изменений) -->
     <svg style="display: none;">
         <defs>
             <!-- Иконки -->
@@ -201,10 +201,6 @@
                             <option value="solarized">Solarized</option>
                         </select>
                     </div>
-                    <!-- <div class="setting-item">
-                        <label for="custom-color-settings">Основной цвет:</label>
-                        <input type="color" id="custom-color-settings" value="#4a90e2">
-                    </div> -->
                 </div>
 
                 <div class="settings-section">
@@ -237,10 +233,39 @@
                     <h3>Исключённые треки</h3>
                     <ul id="excluded-tracks-list" class="excluded-list"></ul>
                 </div>
-                <!-- Удалён блок "Громкость по тегам" -->
+
+                <!-- Новая секция: Визуализатор (без поля цвета) -->
+                <div class="settings-section">
+                    <h3>Визуализатор</h3>
+                    <div class="setting-item">
+                        <label for="visualizer-enabled">Включить:</label>
+                        <input type="checkbox" id="visualizer-enabled" checked>
+                    </div>
+                    <div class="setting-item">
+                        <label for="visualizer-type">Тип:</label>
+                        <select id="visualizer-type">
+                            <option value="bars">Полоски</option>
+                            <option value="waveform">Волна</option>
+                            <option value="circle">Круг</option>
+                            <option value="fire">Пламя</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label for="visualizer-sensitivity">Чувствительность:</label>
+                        <input type="range" id="visualizer-sensitivity" min="0.1" max="3" step="0.1" value="1.0">
+                    </div>
+                    <div class="setting-item">
+                        <label for="visualizer-bar-count">Количество полос (для полос):</label>
+                        <input type="range" id="visualizer-bar-count" min="4" max="64" step="1" value="16">
+                    </div>
+                    <div class="setting-item">
+                        <label for="visualizer-smoothing">Сглаживание:</label>
+                        <input type="range" id="visualizer-smoothing" min="0" max="0.9" step="0.1" value="0.5">
+                    </div>
+                </div>
             </div>
 
-            <!-- Страница деталей трека с добавленными элементами управления -->
+            <!-- Страница деталей трека -->
             <div class="page" id="page-track">
                 <h2>
                     <svg class="icon"><use href="#icon-note"></use></svg> Детали трека

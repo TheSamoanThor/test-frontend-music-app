@@ -10,6 +10,8 @@ var UI = class UI {
         this.detailPictureUrl = null;
         this.playerVisualizerCallback = null;
         this.trackProgressHandler = null;
+        // Для визуализатора на странице деталей
+        this.trackDetailVisualizerCallback = null;
 
         // Привязываем колбэк потери доступа
         this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
@@ -151,18 +153,15 @@ var UI = class UI {
 
     // ----- Новые методы для обработки потери доступа и переключения режимов -----
     async handleFileAccessLost(track) {
-        // Если track === null, значит ошибка при выборе папки (пользователь отменил или запретил доступ)
         if (track === null) {
             if (confirm('Не удалось получить доступ к папке. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)')) {
                 await this.switchToFilePickerMode();
             }
         } else {
-            // Потеря доступа к конкретному файлу
             if (confirm(`Доступ к файлу "${track.name}" потерян. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)`)) {
                 await this.switchToFilePickerMode();
             } else {
-                // Если пользователь отказался, просто удаляем недоступный трек из очереди (плеер сам обработает)
-                // Можно также пометить трек как недоступный, но для простоты оставим так
+                // Ничего не делаем
             }
         }
     }
@@ -171,17 +170,11 @@ var UI = class UI {
         if (!confirm('Переключение в режим выбора файлов очистит всю текущую библиотеку и настройки треков. Продолжить?')) {
             return;
         }
-        // Очищаем все данные в БД (кроме настроек)
         await this.db.clearAllData();
-        // Очищаем очередь в плеере
         await this.player.clearQueue();
-        // Устанавливаем fallback-режим
         this.fileHandler.setFallbackMode(true);
-        // Вызываем выбор файлов
         await this.fileHandler.pickFiles();
-        // Перерисовываем библиотеку
         await this.renderLibrary();
-        // Обновляем страницы
         Router.handleRoute();
     }
 
@@ -193,12 +186,9 @@ var UI = class UI {
         if (!confirm('Переключение в режим выбора папки очистит всю текущую библиотеку и настройки треков. Продолжить?')) {
             return;
         }
-        // Очищаем все данные в БД
         await this.db.clearAllData();
         await this.player.clearQueue();
-        // Выключаем fallback-режим
         this.fileHandler.setFallbackMode(false);
-        // Вызываем выбор папки
         await this.fileHandler.pickDirectory();
         await this.renderLibrary();
         Router.handleRoute();
@@ -223,26 +213,203 @@ var UI = class UI {
         ctx.clearRect(0, 0, width, height);
         if (!dataArray) return;
 
-        const barCount = 8;
-        const barWidth = width / barCount;
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim() || '#4a90e2';
+        // Получаем цвет текста из текущей темы
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#212529';
 
-        for (let i = 0; i < barCount; i++) {
-            const start = Math.floor(i * dataArray.length / barCount);
-            const end = Math.floor((i + 1) * dataArray.length / barCount);
-            let sum = 0;
-            for (let j = start; j < end; j++) {
-                sum += dataArray[j];
+        const player = this.player;
+        const type = player.visualizerType;
+        const sensitivity = player.visualizerSensitivity;
+        const barCount = player.visualizerBarCount;
+
+        const amplifiedData = dataArray.map(val => Math.min(255, val * sensitivity));
+
+        if (type === 'bars') {
+            const actualBars = Math.min(barCount, amplifiedData.length);
+            const barWidth = width / actualBars;
+            for (let i = 0; i < actualBars; i++) {
+                const start = Math.floor(i * amplifiedData.length / actualBars);
+                const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
+                let sum = 0;
+                for (let j = start; j < end; j++) {
+                    sum += amplifiedData[j];
+                }
+                const avg = sum / (end - start) / 255;
+                const barHeight = avg * height;
+                const x = i * barWidth;
+                const y = height - barHeight;
+
+                ctx.fillStyle = textColor;
+                ctx.globalAlpha = 0.7 + 0.3 * avg;
+                ctx.fillRect(x, y, barWidth - 1, barHeight);
             }
-            const avg = sum / (end - start) / 255;
-            const barHeight = avg * height;
-            const x = i * barWidth;
-            const y = height - barHeight;
+        } else if (type === 'waveform') {
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const step = amplifiedData.length / width;
+            for (let x = 0; x < width; x++) {
+                const index = Math.floor(x * step);
+                const value = amplifiedData[index] / 255;
+                const y = height - value * height;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        } else if (type === 'circle') {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.4;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const points = amplifiedData.length;
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * Math.PI * 2;
+                const value = amplifiedData[i] / 255;
+                const r = radius + value * radius * 0.5;
+                const x = centerX + Math.cos(angle) * r;
+                const y = centerY + Math.sin(angle) * r;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        } else if (type === 'fire') {
+            const actualBars = Math.min(barCount, amplifiedData.length);
+            const barWidth = width / actualBars;
+            for (let i = 0; i < actualBars; i++) {
+                const start = Math.floor(i * amplifiedData.length / actualBars);
+                const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
+                let sum = 0;
+                for (let j = start; j < end; j++) {
+                    sum += amplifiedData[j];
+                }
+                const avg = sum / (end - start) / 255;
+                const barHeight = avg * height;
+                const x = i * barWidth;
+                const y = height - barHeight;
 
-            ctx.fillStyle = primaryColor;
-            ctx.globalAlpha = 0.7 + 0.3 * avg;
-            ctx.fillRect(x, y, barWidth - 1, barHeight);
+                const gradient = ctx.createLinearGradient(x, y, x + barWidth, height);
+                gradient.addColorStop(0, 'yellow');
+                gradient.addColorStop(1, 'red');
+                ctx.fillStyle = gradient;
+                ctx.globalAlpha = 0.8;
+                ctx.fillRect(x, y, barWidth - 1, barHeight);
+            }
         }
+
+        ctx.globalAlpha = 1.0;
+    }
+
+    // ===== Визуализатор для страницы деталей =====
+    registerTrackDetailVisualizer() {
+        if (this.trackDetailVisualizerCallback) return;
+        this.trackDetailVisualizerCallback = (dataArray) => {
+            this.drawTrackDetailVisualizer(dataArray);
+        };
+        this.player.registerVisualizerCallback(this.trackDetailVisualizerCallback);
+    }
+
+    unregisterTrackDetailVisualizer() {
+        if (this.trackDetailVisualizerCallback) {
+            this.player.unregisterVisualizerCallback(this.trackDetailVisualizerCallback);
+            this.trackDetailVisualizerCallback = null;
+        }
+    }
+
+    drawTrackDetailVisualizer(dataArray) {
+        const canvas = document.getElementById('track-detail-visualizer');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        ctx.clearRect(0, 0, width, height);
+        if (!dataArray) return;
+
+        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#212529';
+
+        const player = this.player;
+        const type = player.visualizerType;
+        const sensitivity = player.visualizerSensitivity;
+        const barCount = player.visualizerBarCount;
+
+        const amplifiedData = dataArray.map(val => Math.min(255, val * sensitivity));
+
+        if (type === 'bars') {
+            const actualBars = Math.min(barCount, amplifiedData.length);
+            const barWidth = width / actualBars;
+            for (let i = 0; i < actualBars; i++) {
+                const start = Math.floor(i * amplifiedData.length / actualBars);
+                const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
+                let sum = 0;
+                for (let j = start; j < end; j++) {
+                    sum += amplifiedData[j];
+                }
+                const avg = sum / (end - start) / 255;
+                const barHeight = avg * height;
+                const x = i * barWidth;
+                const y = height - barHeight;
+
+                ctx.fillStyle = textColor;
+                ctx.globalAlpha = 0.7 + 0.3 * avg;
+                ctx.fillRect(x, y, barWidth - 1, barHeight);
+            }
+        } else if (type === 'waveform') {
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const step = amplifiedData.length / width;
+            for (let x = 0; x < width; x++) {
+                const index = Math.floor(x * step);
+                const value = amplifiedData[index] / 255;
+                const y = height - value * height;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        } else if (type === 'circle') {
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) * 0.4;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            const points = amplifiedData.length;
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * Math.PI * 2;
+                const value = amplifiedData[i] / 255;
+                const r = radius + value * radius * 0.5;
+                const x = centerX + Math.cos(angle) * r;
+                const y = centerY + Math.sin(angle) * r;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        } else if (type === 'fire') {
+            const actualBars = Math.min(barCount, amplifiedData.length);
+            const barWidth = width / actualBars;
+            for (let i = 0; i < actualBars; i++) {
+                const start = Math.floor(i * amplifiedData.length / actualBars);
+                const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
+                let sum = 0;
+                for (let j = start; j < end; j++) {
+                    sum += amplifiedData[j];
+                }
+                const avg = sum / (end - start) / 255;
+                const barHeight = avg * height;
+                const x = i * barWidth;
+                const y = height - barHeight;
+
+                const gradient = ctx.createLinearGradient(x, y, x + barWidth, height);
+                gradient.addColorStop(0, 'yellow');
+                gradient.addColorStop(1, 'red');
+                ctx.fillStyle = gradient;
+                ctx.globalAlpha = 0.8;
+                ctx.fillRect(x, y, barWidth - 1, barHeight);
+            }
+        }
+
         ctx.globalAlpha = 1.0;
     }
 
@@ -470,7 +637,7 @@ var UI = class UI {
 
         const coverImg = document.getElementById('current-track-cover');
         const visualizerCanvas = document.getElementById('player-visualizer');
-        const noCoverSpan = document.querySelector('.no-cover');
+        const noCoverSpan = document.querySelector('.player-cover .no-cover');
 
         if (this.currentPictureUrl) {
             URL.revokeObjectURL(this.currentPictureUrl);
@@ -658,6 +825,71 @@ var UI = class UI {
         });
 
         await this.renderThemeFineTuning();
+
+        // ===== Синхронизация настроек визуализатора =====
+        const enabledCheck = document.getElementById('visualizer-enabled');
+        const typeSelect = document.getElementById('visualizer-type');
+        const sensitivityRange = document.getElementById('visualizer-sensitivity');
+        const barCountRange = document.getElementById('visualizer-bar-count');
+        const smoothingRange = document.getElementById('visualizer-smoothing');
+
+        if (enabledCheck) {
+            enabledCheck.checked = this.player.visualizerEnabled;
+            const newCheck = enabledCheck.cloneNode(true);
+            enabledCheck.parentNode.replaceChild(newCheck, enabledCheck);
+            newCheck.addEventListener('change', async (e) => {
+                this.player.visualizerEnabled = e.target.checked;
+                await this.player.saveVisualizerSettings();
+                if (!this.player.visualizerEnabled) {
+                    this.player.stopVisualizer();
+                } else if (this.player.isPlaying) {
+                    this.player.startVisualizer();
+                }
+            });
+        }
+
+        if (typeSelect) {
+            typeSelect.value = this.player.visualizerType;
+            const newSelect = typeSelect.cloneNode(true);
+            typeSelect.parentNode.replaceChild(newSelect, typeSelect);
+            newSelect.addEventListener('change', async (e) => {
+                this.player.visualizerType = e.target.value;
+                await this.player.saveVisualizerSettings();
+            });
+        }
+
+        if (sensitivityRange) {
+            sensitivityRange.value = this.player.visualizerSensitivity;
+            const newRange = sensitivityRange.cloneNode(true);
+            sensitivityRange.parentNode.replaceChild(newRange, sensitivityRange);
+            newRange.addEventListener('input', async (e) => {
+                this.player.visualizerSensitivity = parseFloat(e.target.value);
+                await this.player.saveVisualizerSettings();
+            });
+        }
+
+        if (barCountRange) {
+            barCountRange.value = this.player.visualizerBarCount;
+            const newRange = barCountRange.cloneNode(true);
+            barCountRange.parentNode.replaceChild(newRange, barCountRange);
+            newRange.addEventListener('input', async (e) => {
+                this.player.visualizerBarCount = parseInt(e.target.value);
+                await this.player.saveVisualizerSettings();
+            });
+        }
+
+        if (smoothingRange) {
+            smoothingRange.value = this.player.visualizerSmoothing;
+            const newRange = smoothingRange.cloneNode(true);
+            smoothingRange.parentNode.replaceChild(newRange, smoothingRange);
+            newRange.addEventListener('input', async (e) => {
+                this.player.visualizerSmoothing = parseFloat(e.target.value);
+                if (this.player.analyser) {
+                    this.player.analyser.smoothingTimeConstant = this.player.visualizerSmoothing;
+                }
+                await this.player.saveVisualizerSettings();
+            });
+        }
     }
 
     async renderThemeFineTuning() {
@@ -744,13 +976,29 @@ var UI = class UI {
             ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${trackId}" data-tag="${t}"><svg class="icon"><use href="#icon-close"></use></svg></button></span>`).join(' ')
             : 'нет';
 
-        const coverHtml = pictureUrl 
-            ? `<img src="${pictureUrl}" alt="cover" class="track-detail-cover" style="max-width: 200px; max-height: 200px; border-radius: 8px;">`
-            : '<div class="track-detail-cover no-cover"><svg class="icon"><use href="#icon-note"></use></svg></div>';
+        // Медиа-блок с обложкой/визуализатором
+        let mediaHtml;
+        if (pictureUrl) {
+            mediaHtml = `
+                <div class="track-detail-media">
+                    <img src="${pictureUrl}" alt="cover" class="track-detail-cover" style="max-width:200px; max-height:200px; border-radius:8px;">
+                    <canvas id="track-detail-visualizer" width="200" height="200" style="display:none;"></canvas>
+                    <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
+                </div>
+            `;
+        } else {
+            mediaHtml = `
+                <div class="track-detail-media">
+                    <img src="" alt="cover" class="track-detail-cover" style="display:none;">
+                    <canvas id="track-detail-visualizer" width="200" height="200" style="display:block;"></canvas>
+                    <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
+                </div>
+            `;
+        }
 
         container.innerHTML = `
             <div class="track-detail">
-                ${coverHtml}
+                ${mediaHtml}
                 <h3>${track.name}</h3>
                 <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
                 <p><strong>Путь:</strong> ${track.path || 'неизвестно'}</p>
@@ -773,6 +1021,51 @@ var UI = class UI {
         }
         if (pictureUrl) {
             this.detailPictureUrl = pictureUrl;
+        }
+
+        // Управление видимостью canvas и регистрация визуализатора
+        const img = document.getElementById('track-detail-cover');
+        const canvas = document.getElementById('track-detail-visualizer');
+        const noCoverDiv = document.querySelector('.track-detail-media .no-cover');
+
+        if (pictureUrl) {
+            img.onload = () => {
+                img.style.display = 'block';
+                if (canvas) canvas.style.display = 'none';
+                if (noCoverDiv) noCoverDiv.style.display = 'none';
+                this.unregisterTrackDetailVisualizer();
+            };
+            img.onerror = () => {
+                img.style.display = 'none';
+                if (canvas) canvas.style.display = 'block';
+                if (noCoverDiv) noCoverDiv.style.display = 'none';
+                if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === trackId) {
+                    this.registerTrackDetailVisualizer();
+                }
+            };
+            // Если изображение уже загружено, onload может не сработать, поэтому проверим
+            if (img.complete) {
+                if (img.naturalWidth > 0) {
+                    img.style.display = 'block';
+                    if (canvas) canvas.style.display = 'none';
+                    if (noCoverDiv) noCoverDiv.style.display = 'none';
+                } else {
+                    img.style.display = 'none';
+                    if (canvas) canvas.style.display = 'block';
+                    if (noCoverDiv) noCoverDiv.style.display = 'none';
+                    if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === trackId) {
+                        this.registerTrackDetailVisualizer();
+                    }
+                }
+            }
+        } else {
+            // Нет обложки, показываем canvas
+            if (img) img.style.display = 'none';
+            if (canvas) canvas.style.display = 'block';
+            if (noCoverDiv) noCoverDiv.style.display = 'none';
+            if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === trackId) {
+                this.registerTrackDetailVisualizer();
+            }
         }
 
         document.getElementById('detail-add-tag').addEventListener('click', async () => {
