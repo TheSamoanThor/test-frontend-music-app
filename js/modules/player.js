@@ -25,6 +25,9 @@ var Player = class Player {
         this.visualizerBarCount = 16;
         this.visualizerSmoothing = 0.5;
         this.visualizerEnabled = true;
+        this.visualizerBarSymX = false;
+        this.visualizerBarSymY = false;
+        this.visualizerWaveSymX = false;
 
         this.initAudioEvents();
     }
@@ -412,6 +415,9 @@ var Player = class Player {
         this.visualizerSensitivity = parseFloat(await this.db.getSetting('visualizer_sensitivity') || '1.0');
         this.visualizerBarCount = parseInt(await this.db.getSetting('visualizer_bar_count') || '16');
         this.visualizerSmoothing = parseFloat(await this.db.getSetting('visualizer_smoothing') || '0.5');
+        this.visualizerBarSymX = await this.db.getSetting('visualizer_bar_sym_x') === true;
+        this.visualizerBarSymY = await this.db.getSetting('visualizer_bar_sym_y') === true;
+        this.visualizerWaveSymX = await this.db.getSetting('visualizer_wave_sym_x') === true;
         if (this.analyser) {
             this.analyser.smoothingTimeConstant = this.visualizerSmoothing;
         }
@@ -423,5 +429,8 @@ var Player = class Player {
         await this.db.setSetting('visualizer_sensitivity', this.visualizerSensitivity);
         await this.db.setSetting('visualizer_bar_count', this.visualizerBarCount);
         await this.db.setSetting('visualizer_smoothing', this.visualizerSmoothing);
+        await this.db.setSetting('visualizer_bar_sym_x', this.visualizerBarSymX);
+        await this.db.setSetting('visualizer_bar_sym_y', this.visualizerBarSymY);
+        await this.db.setSetting('visualizer_wave_sym_x', this.visualizerWaveSymX);
     }
 };

@@ -207,44 +207,86 @@ var UI = class UI {
         if (!dataArray) return;
 
         const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#212529';
-
         const player = this.player;
         const type = player.visualizerType;
         const sensitivity = player.visualizerSensitivity;
         const barCount = player.visualizerBarCount;
+        const barSymX = player.visualizerBarSymX;
+        const barSymY = player.visualizerBarSymY;
+        const waveSymX = player.visualizerWaveSymX;
 
         const amplifiedData = dataArray.map(val => Math.min(255, val * sensitivity));
 
         if (type === 'bars') {
             const actualBars = Math.min(barCount, amplifiedData.length);
-            const barWidth = width / actualBars;
+            let heights = [];
             for (let i = 0; i < actualBars; i++) {
                 const start = Math.floor(i * amplifiedData.length / actualBars);
                 const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
                 let sum = 0;
-                for (let j = start; j < end; j++) {
-                    sum += amplifiedData[j];
+                for (let j = start; j < end; j++) sum += amplifiedData[j];
+                heights.push(sum / (end - start) / 255);
+            }
+
+            if (barSymX) {
+                const half = Math.floor(actualBars / 2);
+                const left = heights.slice(0, half);
+                const right = [...left].reverse();
+                heights = [...left, ...right];
+                if (actualBars % 2 === 1) {
+                    heights.splice(half, 1, heights[half]);
                 }
-                const avg = sum / (end - start) / 255;
+            }
+
+            const barWidth = width / heights.length;
+            const centerY = height / 2;
+
+            for (let i = 0; i < heights.length; i++) {
+                const avg = heights[i];
                 const barHeight = avg * height;
                 const x = i * barWidth;
-                const y = height - barHeight;
 
-                ctx.fillStyle = textColor;
-                ctx.globalAlpha = 0.7 + 0.3 * avg;
-                ctx.fillRect(x, y, barWidth - 1, barHeight);
+                if (barSymY) {
+                    const halfHeight = barHeight / 2;
+                    const y = centerY - halfHeight;
+                    ctx.fillStyle = textColor;
+                    ctx.globalAlpha = 0.7 + 0.3 * avg;
+                    ctx.fillRect(x, y, barWidth - 1, barHeight);
+                } else {
+                    ctx.fillStyle = textColor;
+                    ctx.globalAlpha = 0.7 + 0.3 * avg;
+                    ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+                }
             }
         } else if (type === 'waveform') {
             ctx.strokeStyle = textColor;
             ctx.lineWidth = 2;
             ctx.beginPath();
+
             const step = amplifiedData.length / width;
-            for (let x = 0; x < width; x++) {
+            const getY = (x) => {
                 const index = Math.floor(x * step);
                 const value = amplifiedData[index] / 255;
-                const y = height - value * height;
-                if (x === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+                return height - value * height;
+            };
+
+            if (waveSymX) {
+                for (let x = 0; x <= width / 2; x++) {
+                    const y = getY(x);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                for (let x = Math.floor(width / 2); x <= width; x++) {
+                    const mirrorX = width - x;
+                    const y = getY(mirrorX);
+                    ctx.lineTo(x, y);
+                }
+            } else {
+                for (let x = 0; x < width; x++) {
+                    const y = getY(x);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
             }
             ctx.stroke();
         } else if (type === 'circle') {
@@ -273,9 +315,7 @@ var UI = class UI {
                 const start = Math.floor(i * amplifiedData.length / actualBars);
                 const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
                 let sum = 0;
-                for (let j = start; j < end; j++) {
-                    sum += amplifiedData[j];
-                }
+                for (let j = start; j < end; j++) sum += amplifiedData[j];
                 const avg = sum / (end - start) / 255;
                 const barHeight = avg * height;
                 const x = i * barWidth;
@@ -318,44 +358,86 @@ var UI = class UI {
         if (!dataArray) return;
 
         const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim() || '#212529';
-
         const player = this.player;
         const type = player.visualizerType;
         const sensitivity = player.visualizerSensitivity;
         const barCount = player.visualizerBarCount;
+        const barSymX = player.visualizerBarSymX;
+        const barSymY = player.visualizerBarSymY;
+        const waveSymX = player.visualizerWaveSymX;
 
         const amplifiedData = dataArray.map(val => Math.min(255, val * sensitivity));
 
         if (type === 'bars') {
             const actualBars = Math.min(barCount, amplifiedData.length);
-            const barWidth = width / actualBars;
+            let heights = [];
             for (let i = 0; i < actualBars; i++) {
                 const start = Math.floor(i * amplifiedData.length / actualBars);
                 const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
                 let sum = 0;
-                for (let j = start; j < end; j++) {
-                    sum += amplifiedData[j];
+                for (let j = start; j < end; j++) sum += amplifiedData[j];
+                heights.push(sum / (end - start) / 255);
+            }
+
+            if (barSymX) {
+                const half = Math.floor(actualBars / 2);
+                const left = heights.slice(0, half);
+                const right = [...left].reverse();
+                heights = [...left, ...right];
+                if (actualBars % 2 === 1) {
+                    heights.splice(half, 1, heights[half]);
                 }
-                const avg = sum / (end - start) / 255;
+            }
+
+            const barWidth = width / heights.length;
+            const centerY = height / 2;
+
+            for (let i = 0; i < heights.length; i++) {
+                const avg = heights[i];
                 const barHeight = avg * height;
                 const x = i * barWidth;
-                const y = height - barHeight;
 
-                ctx.fillStyle = textColor;
-                ctx.globalAlpha = 0.7 + 0.3 * avg;
-                ctx.fillRect(x, y, barWidth - 1, barHeight);
+                if (barSymY) {
+                    const halfHeight = barHeight / 2;
+                    const y = centerY - halfHeight;
+                    ctx.fillStyle = textColor;
+                    ctx.globalAlpha = 0.7 + 0.3 * avg;
+                    ctx.fillRect(x, y, barWidth - 1, barHeight);
+                } else {
+                    ctx.fillStyle = textColor;
+                    ctx.globalAlpha = 0.7 + 0.3 * avg;
+                    ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+                }
             }
         } else if (type === 'waveform') {
             ctx.strokeStyle = textColor;
             ctx.lineWidth = 2;
             ctx.beginPath();
+
             const step = amplifiedData.length / width;
-            for (let x = 0; x < width; x++) {
+            const getY = (x) => {
                 const index = Math.floor(x * step);
                 const value = amplifiedData[index] / 255;
-                const y = height - value * height;
-                if (x === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+                return height - value * height;
+            };
+
+            if (waveSymX) {
+                for (let x = 0; x <= width / 2; x++) {
+                    const y = getY(x);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                for (let x = Math.floor(width / 2); x <= width; x++) {
+                    const mirrorX = width - x;
+                    const y = getY(mirrorX);
+                    ctx.lineTo(x, y);
+                }
+            } else {
+                for (let x = 0; x < width; x++) {
+                    const y = getY(x);
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
             }
             ctx.stroke();
         } else if (type === 'circle') {
@@ -384,9 +466,7 @@ var UI = class UI {
                 const start = Math.floor(i * amplifiedData.length / actualBars);
                 const end = Math.floor((i + 1) * amplifiedData.length / actualBars);
                 let sum = 0;
-                for (let j = start; j < end; j++) {
-                    sum += amplifiedData[j];
-                }
+                for (let j = start; j < end; j++) sum += amplifiedData[j];
                 const avg = sum / (end - start) / 255;
                 const barHeight = avg * height;
                 const x = i * barWidth;
@@ -877,6 +957,39 @@ var UI = class UI {
                 if (this.player.analyser) {
                     this.player.analyser.smoothingTimeConstant = this.player.visualizerSmoothing;
                 }
+                await this.player.saveVisualizerSettings();
+            });
+        }
+
+        const barSymX = document.getElementById('visualizer-bar-sym-x');
+        if (barSymX) {
+            barSymX.checked = this.player.visualizerBarSymX;
+            const newBarSymX = barSymX.cloneNode(true);
+            barSymX.parentNode.replaceChild(newBarSymX, barSymX);
+            newBarSymX.addEventListener('change', async (e) => {
+                this.player.visualizerBarSymX = e.target.checked;
+                await this.player.saveVisualizerSettings();
+            });
+        }
+
+        const barSymY = document.getElementById('visualizer-bar-sym-y');
+        if (barSymY) {
+            barSymY.checked = this.player.visualizerBarSymY;
+            const newBarSymY = barSymY.cloneNode(true);
+            barSymY.parentNode.replaceChild(newBarSymY, barSymY);
+            newBarSymY.addEventListener('change', async (e) => {
+                this.player.visualizerBarSymY = e.target.checked;
+                await this.player.saveVisualizerSettings();
+            });
+        }
+
+        const waveSymX = document.getElementById('visualizer-wave-sym-x');
+        if (waveSymX) {
+            waveSymX.checked = this.player.visualizerWaveSymX;
+            const newWaveSymX = waveSymX.cloneNode(true);
+            waveSymX.parentNode.replaceChild(newWaveSymX, waveSymX);
+            newWaveSymX.addEventListener('change', async (e) => {
+                this.player.visualizerWaveSymX = e.target.checked;
                 await this.player.saveVisualizerSettings();
             });
         }
