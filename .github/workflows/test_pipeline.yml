@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,9 +21,17 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           echo "archive_name=music-player-${TAG}.zip" >> $GITHUB_OUTPUT
 
-      - name: Create archive with git archive
+      - name: Create release folder
         run: |
-          git archive --format=zip --output=${{ steps.vars.outputs.archive_name }} HEAD -- index.html styles.css js/
+          mkdir release
+          cp index.html release/
+          cp styles.css release/
+          cp -r js release/
+
+      - name: Create archive
+        run: |
+          cd release
+          zip -r ../${{ steps.vars.outputs.archive_name }} .
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
