@@ -23,27 +23,29 @@ jobs:
 
       - name: Create clean release folder
         run: |
-          # 1. Удаляем папку, если она была, и создаем заново
           rm -rf release_dist
           mkdir -p release_dist/js
-          
-          # 2. Копируем ТОЛЬКО нужные файлы (явно)
           cp index.html release_dist/
           cp styles.css release_dist/
-          
-          # 3. Копируем содержимое js, проверяя наличие файлов
           if [ -d "js" ] && [ "$(ls -A js)" ]; then
             cp -r js/* release_dist/js/
           fi
+          # Удаляем лишние файлы
+          find release_dist -name ".DS_Store" -delete
+          find release_dist -name "*.gitkeep" -delete
+          find release_dist -name "*.md" -delete
+          find release_dist -name "LICENSE" -delete
+          echo "Contents of release_dist:"
+          ls -la release_dist/
+          echo "Contents of release_dist/js:"
+          ls -la release_dist/js/
 
       - name: Create archive from release folder
         run: |
-          # Заходим в изолированную папку и пакуем всё, что в ней есть
           cd release_dist
           zip -r ../${{ steps.vars.outputs.archive_name }} .
-
-      - name: List files for debug
-        run: unzip -l ${{ steps.vars.outputs.archive_name }}
+          echo "Archive created. Listing archive contents:"
+          unzip -l ../${{ steps.vars.outputs.archive_name }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
