@@ -232,7 +232,7 @@ var UI = class UI {
                 const half = Math.floor(actualBars / 2);
                 const left = heights.slice(0, half);
                 const right = [...left].reverse();
-                heights = [...left, ...right];
+                heights = [...right, ...left];
                 if (actualBars % 2 === 1) {
                     heights.splice(half, 1, heights[half]);
                 }
@@ -271,15 +271,27 @@ var UI = class UI {
             };
 
             if (waveSymX) {
-                for (let x = 0; x <= width / 2; x++) {
+                // собираем точки правой половины (от центра до правого края)
+                let rightPoints = [];
+                for (let x = width / 2; x <= width; x++) {
                     const y = getY(x);
-                    if (x === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
+                    rightPoints.push({ x, y });
                 }
-                for (let x = Math.floor(width / 2); x <= width; x++) {
-                    const mirrorX = width - x;
-                    const y = getY(mirrorX);
-                    ctx.lineTo(x, y);
+                // строим полный массив точек: левая половина (отражение правой) + правая половина (без дублирования центра)
+                let allPoints = [];
+                // левая половина (зеркально)
+                for (let i = rightPoints.length - 1; i >= 0; i--) {
+                    const mirrorX = width - rightPoints[i].x;
+                    allPoints.push({ x: mirrorX, y: rightPoints[i].y });
+                }
+                // правая половина (пропускаем центральную точку, чтобы не дублировать)
+                for (let i = 1; i < rightPoints.length; i++) {
+                    allPoints.push(rightPoints[i]);
+                }
+                // рисуем
+                for (let i = 0; i < allPoints.length; i++) {
+                    if (i === 0) ctx.moveTo(allPoints[i].x, allPoints[i].y);
+                    else ctx.lineTo(allPoints[i].x, allPoints[i].y);
                 }
             } else {
                 for (let x = 0; x < width; x++) {
@@ -383,7 +395,7 @@ var UI = class UI {
                 const half = Math.floor(actualBars / 2);
                 const left = heights.slice(0, half);
                 const right = [...left].reverse();
-                heights = [...left, ...right];
+                heights = [...right, ...left];
                 if (actualBars % 2 === 1) {
                     heights.splice(half, 1, heights[half]);
                 }
@@ -422,15 +434,22 @@ var UI = class UI {
             };
 
             if (waveSymX) {
-                for (let x = 0; x <= width / 2; x++) {
+                let rightPoints = [];
+                for (let x = width / 2; x <= width; x++) {
                     const y = getY(x);
-                    if (x === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
+                    rightPoints.push({ x, y });
                 }
-                for (let x = Math.floor(width / 2); x <= width; x++) {
-                    const mirrorX = width - x;
-                    const y = getY(mirrorX);
-                    ctx.lineTo(x, y);
+                let allPoints = [];
+                for (let i = rightPoints.length - 1; i >= 0; i--) {
+                    const mirrorX = width - rightPoints[i].x;
+                    allPoints.push({ x: mirrorX, y: rightPoints[i].y });
+                }
+                for (let i = 1; i < rightPoints.length; i++) {
+                    allPoints.push(rightPoints[i]);
+                }
+                for (let i = 0; i < allPoints.length; i++) {
+                    if (i === 0) ctx.moveTo(allPoints[i].x, allPoints[i].y);
+                    else ctx.lineTo(allPoints[i].x, allPoints[i].y);
                 }
             } else {
                 for (let x = 0; x < width; x++) {
@@ -897,12 +916,17 @@ var UI = class UI {
 
         await this.renderThemeFineTuning();
 
+        // === Визуализатор ===
         const enabledCheck = document.getElementById('visualizer-enabled');
         const typeSelect = document.getElementById('visualizer-type');
         const sensitivityRange = document.getElementById('visualizer-sensitivity');
         const barCountRange = document.getElementById('visualizer-bar-count');
         const smoothingRange = document.getElementById('visualizer-smoothing');
+        const barSymX = document.getElementById('visualizer-bar-sym-x');
+        const barSymY = document.getElementById('visualizer-bar-sym-y');
+        const waveSymX = document.getElementById('visualizer-wave-sym-x');
 
+        // Включение
         if (enabledCheck) {
             enabledCheck.checked = this.player.visualizerEnabled;
             const newCheck = enabledCheck.cloneNode(true);
@@ -918,16 +942,20 @@ var UI = class UI {
             });
         }
 
+        // Тип визуализатора
         if (typeSelect) {
-            typeSelect.value = this.player.visualizerType;
+            const currentType = this.player.visualizerType;
+            typeSelect.value = currentType;
             const newSelect = typeSelect.cloneNode(true);
             typeSelect.parentNode.replaceChild(newSelect, typeSelect);
+            newSelect.value = currentType; // явно устанавливаем значение
             newSelect.addEventListener('change', async (e) => {
                 this.player.visualizerType = e.target.value;
                 await this.player.saveVisualizerSettings();
             });
         }
 
+        // Чувствительность
         if (sensitivityRange) {
             sensitivityRange.value = this.player.visualizerSensitivity;
             const newRange = sensitivityRange.cloneNode(true);
@@ -938,6 +966,7 @@ var UI = class UI {
             });
         }
 
+        // Количество полос
         if (barCountRange) {
             barCountRange.value = this.player.visualizerBarCount;
             const newRange = barCountRange.cloneNode(true);
@@ -948,6 +977,7 @@ var UI = class UI {
             });
         }
 
+        // Сглаживание
         if (smoothingRange) {
             smoothingRange.value = this.player.visualizerSmoothing;
             const newRange = smoothingRange.cloneNode(true);
@@ -961,7 +991,7 @@ var UI = class UI {
             });
         }
 
-        const barSymX = document.getElementById('visualizer-bar-sym-x');
+        // Симметрия X для столбцов
         if (barSymX) {
             barSymX.checked = this.player.visualizerBarSymX;
             const newBarSymX = barSymX.cloneNode(true);
@@ -972,7 +1002,7 @@ var UI = class UI {
             });
         }
 
-        const barSymY = document.getElementById('visualizer-bar-sym-y');
+        // Симметрия Y для столбцов
         if (barSymY) {
             barSymY.checked = this.player.visualizerBarSymY;
             const newBarSymY = barSymY.cloneNode(true);
@@ -983,7 +1013,7 @@ var UI = class UI {
             });
         }
 
-        const waveSymX = document.getElementById('visualizer-wave-sym-x');
+        // Симметрия X для волны
         if (waveSymX) {
             waveSymX.checked = this.player.visualizerWaveSymX;
             const newWaveSymX = waveSymX.cloneNode(true);

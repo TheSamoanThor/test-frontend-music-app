@@ -1259,10 +1259,6 @@ input[type=range]::-moz-range-progress {
     box-shadow: 0 0 0 1px var(--secondary-bg);
 }
 
-input[type=range]::-moz-focus-outer {
-    border: 0;
-}
-
 input[type=range]:focus {
     outline: none;
 }
@@ -1273,4 +1269,58 @@ input[type=range]:focus::-webkit-slider-runnable-track {
 input[type=range]:focus::-moz-range-track {
     background: var(--primary-color);
     opacity: 0.5;
+}
+
+/* ========== СТИЛИЗАЦИЯ ЧЕКБОКСОВ ========== */
+input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.2em;
+    height: 1.2em;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--secondary-bg);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+    margin: 0 0.2em;
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    position: relative;
+}
+
+input[type="checkbox"]:checked::after {
+    content: "✓";
+    font-size: 0.9em;
+    font-weight: bold;
+    color: var(--text-color);
+    display: block;
+    line-height: 1;
+}
+
+input[type="checkbox"]:hover {
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+input[type="checkbox"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-color), 0 0 0 4px rgba(0,0,0,0.1);
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    input[type="checkbox"] {
+        width: 1.4em;
+        height: 1.4em;
+    }
+    input[type="checkbox"]:checked::after {
+        font-size: 1.1em;
+    }
 }
