@@ -21,17 +21,18 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           echo "archive_name=music-player-${TAG}.zip" >> $GITHUB_OUTPUT
 
-      - name: Create release folder
+      - name: Create clean release folder
         run: |
-          mkdir release
+          rm -rf release 
+          mkdir -p release/js
           cp index.html release/
           cp styles.css release/
-          cp -r js release/
+          cp -r js/* release/js/
 
-      - name: Create archive
+      - name: Create archive from release folder
         run: |
           cd release
-          zip -r ../${{ steps.vars.outputs.archive_name }} .
+          zip -r ../${{ steps.vars.outputs.archive_name }} . -x "README.md" ".gitignore" ".github/*"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
