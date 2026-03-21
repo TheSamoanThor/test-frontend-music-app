@@ -18,9 +18,9 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           echo "archive_name=music-player-${TAG}.zip" >> $GITHUB_OUTPUT
 
-      - name: Create archive
+      - name: Create archive with git archive
         run: |
-          zip -r ${{ steps.vars.outputs.archive_name }} index.html styles.css js/ -x "*.DS_Store" "*.git*" ".gitignore" "README.md"
+          git archive --format=zip --output=${{ steps.vars.outputs.archive_name }} HEAD -- index.html styles.css js/
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
