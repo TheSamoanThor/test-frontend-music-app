@@ -1,0 +1,34 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare archive name
+        id: vars
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "archive_name=music-player-${TAG}.zip" >> $GITHUB_OUTPUT
+
+      - name: Create archive
+        run: |
+          zip -r ${{ steps.vars.outputs.archive_name }} index.html styles.css js/ -x "*.DS_Store" "*.git*" ".gitignore" "README.md"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ steps.vars.outputs.archive_name }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
