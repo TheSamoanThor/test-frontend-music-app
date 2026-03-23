@@ -40,5 +40,14 @@ var utils = {
             return `#${r}${g}${b}`;
         }
         return '#000000';
+    },
+    escapeHtml(str) {
+        if (str == null) return '';
+        return String(str).replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
     }
 };

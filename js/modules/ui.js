@@ -111,10 +111,15 @@ var UI = class UI {
             });
         }
 
+        // Исправленный обработчик клика по панели плеера
         document.getElementById('player-bar').addEventListener('click', (e) => {
             if (e.target.closest('button') || e.target.closest('input')) return;
             if (this.player.currentTrack) {
-                Router.navigate('track', this.player.currentTrack.id);
+                if (this.player.currentTrack.id) {
+                    Router.navigate('track', this.player.currentTrack.id);
+                } else if (this.player.currentTrack.archiveId) {
+                    Router.navigate('archive-track', this.player.currentTrack.archiveId);
+                }
             }
         });
 
@@ -271,24 +276,19 @@ var UI = class UI {
             };
 
             if (waveSymX) {
-                // собираем точки правой половины (от центра до правого края)
                 let rightPoints = [];
                 for (let x = width / 2; x <= width; x++) {
                     const y = getY(x);
                     rightPoints.push({ x, y });
                 }
-                // строим полный массив точек: левая половина (отражение правой) + правая половина (без дублирования центра)
                 let allPoints = [];
-                // левая половина (зеркально)
                 for (let i = rightPoints.length - 1; i >= 0; i--) {
                     const mirrorX = width - rightPoints[i].x;
                     allPoints.push({ x: mirrorX, y: rightPoints[i].y });
                 }
-                // правая половина (пропускаем центральную точку, чтобы не дублировать)
                 for (let i = 1; i < rightPoints.length; i++) {
                     allPoints.push(rightPoints[i]);
                 }
-                // рисуем
                 for (let i = 0; i < allPoints.length; i++) {
                     if (i === 0) ctx.moveTo(allPoints[i].x, allPoints[i].y);
                     else ctx.lineTo(allPoints[i].x, allPoints[i].y);
@@ -664,27 +664,8 @@ var UI = class UI {
         });
     }
 
-    async renderQueue(queueIds) {
-        const listEl = document.getElementById('queue-list');
-        listEl.innerHTML = '';
-
-        for (let i = 0; i < queueIds.length; i++) {
-            const track = await this.db.getTrack(queueIds[i]);
-            if (!track) continue;
-            const li = document.createElement('li');
-            li.className = 'queue-item';
-            li.dataset.id = track.id;
-            li.innerHTML = `
-                <span>${track.name}</span>
-                <div class="queue-controls">
-                    <button class="queue-up" data-index="${i}" ${i === 0 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-up"></use></svg></button>
-                    <button class="queue-down" data-index="${i}" ${i === queueIds.length-1 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-down"></use></svg></button>
-                    <button class="queue-remove" data-index="${i}"><svg class="icon"><use href="#icon-close"></use></svg></button>
-                </div>
-            `;
-            listEl.appendChild(li);
-        }
-
+    // Новый метод для обработки кнопок очереди
+    attachQueueHandlers() {
         document.querySelectorAll('.queue-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const index = parseInt(e.target.closest('button').dataset.index);
@@ -692,7 +673,7 @@ var UI = class UI {
                     [this.player.queue[index-1], this.player.queue[index]] = [this.player.queue[index], this.player.queue[index-1]];
                     if (this.player.currentIndex === index) this.player.currentIndex--;
                     else if (this.player.currentIndex === index-1) this.player.currentIndex++;
-                    await this.db.setQueue(this.player.queue);
+                    await this.db.setQueue(this.player.queue.filter(t => t.id).map(t => t.id));
                     this.renderQueue(this.player.queue);
                 }
             });
@@ -705,7 +686,7 @@ var UI = class UI {
                     [this.player.queue[index], this.player.queue[index+1]] = [this.player.queue[index+1], this.player.queue[index]];
                     if (this.player.currentIndex === index) this.player.currentIndex++;
                     else if (this.player.currentIndex === index+1) this.player.currentIndex--;
-                    await this.db.setQueue(this.player.queue);
+                    await this.db.setQueue(this.player.queue.filter(t => t.id).map(t => t.id));
                     this.renderQueue(this.player.queue);
                 }
             });
@@ -717,7 +698,35 @@ var UI = class UI {
                 await this.player.removeFromQueue(index);
             });
         });
+    }
 
+    async renderQueue(queue) {
+        const listEl = document.getElementById('queue-list');
+        listEl.innerHTML = '';
+
+        for (let i = 0; i < queue.length; i++) {
+            let track = queue[i];
+            // Если track – это ID (строка), загружаем полный объект
+            if (typeof track === 'string') {
+                track = await this.db.getTrack(track);
+                if (!track) continue;
+            }
+
+            const li = document.createElement('li');
+            li.className = 'queue-item';
+            li.dataset.id = track.id || `temp-${i}`;
+            li.innerHTML = `
+                <span>${track.name}</span>
+                <div class="queue-controls">
+                    <button class="queue-up" data-index="${i}" ${i === 0 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-up"></use></svg></button>
+                    <button class="queue-down" data-index="${i}" ${i === queue.length-1 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-down"></use></svg></button>
+                    <button class="queue-remove" data-index="${i}"><svg class="icon"><use href="#icon-close"></use></svg></button>
+                </div>
+            `;
+            listEl.appendChild(li);
+        }
+
+        this.attachQueueHandlers();
         DragDrop.initQueue(this);
     }
 
@@ -1395,6 +1404,242 @@ var UI = class UI {
         if (popupVolume) {
             popupVolume.value = percent;
             if (window.updateRangeFill) window.updateRangeFill(popupVolume);
+        }
+    }
+
+    // ==================== Internet Archive integration ====================
+    async renderArchivePage() {
+        const container = document.getElementById('archive-results');
+        container.innerHTML = '<div>Введите запрос для поиска музыки в Internet Archive.</div>';
+        const searchBtn = document.getElementById('archive-search-btn');
+        const radioBtn = document.getElementById('archive-radio-btn');
+        const searchInput = document.getElementById('archive-search-input');
+
+        if (!this.archiveHandlersAttached) {
+            this.archiveHandlersAttached = true;
+            searchBtn.addEventListener('click', () => this.searchArchive());
+            radioBtn.addEventListener('click', () => this.startRadio());
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.searchArchive();
+            });
+        }
+    }
+
+    async searchArchive() {
+        const searchBtn = document.getElementById('archive-search-btn');
+        const radioBtn = document.getElementById('archive-radio-btn');
+        const container = document.getElementById('archive-results');
+        const query = document.getElementById('archive-search-input').value.trim();
+        if (!query) return;
+
+        searchBtn.disabled = true;
+        radioBtn.disabled = true;
+        container.innerHTML = '<div>Поиск...</div>';
+
+        const results = await ArchiveApi.search(query, 30);
+        this.archiveResults = results;
+        this.renderArchiveResults(results);
+
+        searchBtn.disabled = false;
+        radioBtn.disabled = false;
+    }
+
+    renderArchiveResults(results) {
+        const container = document.getElementById('archive-results');
+        if (!results.length) {
+            container.innerHTML = '<div>Ничего не найдено.</div>';
+            return;
+        }
+        container.innerHTML = '';
+        for (let item of results) {
+            const li = document.createElement('li');
+            li.className = 'track-item';
+            const title = item.title || 'Без названия';
+            const creator = item.creator || 'Неизвестный автор';
+            li.innerHTML = `
+                <span><strong>${utils.escapeHtml(title)}</strong> - ${utils.escapeHtml(creator)}</span>
+                <div class="track-tags">Скачиваний: ${item.downloads || 0}</div>
+                <div>
+                    <button class="archive-add-to-queue" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
+                    <button class="archive-play-now" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-play"></use></svg> Сейчас</button>
+                    <button class="archive-add-to-library" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-plus"></use></svg> В библиотеку</button>
+                </div>
+            `;
+            container.appendChild(li);
+        }
+
+        container.querySelectorAll('.archive-add-to-queue').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const identifier = btn.dataset.identifier;
+                const title = btn.dataset.title;
+                const creator = btn.dataset.creator;
+                await this.addArchiveTrack(identifier, title, creator, false);
+            });
+        });
+        container.querySelectorAll('.archive-play-now').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const identifier = btn.dataset.identifier;
+                const title = btn.dataset.title;
+                const creator = btn.dataset.creator;
+                await this.addArchiveTrack(identifier, title, creator, true);
+            });
+        });
+        container.querySelectorAll('.archive-add-to-library').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const identifier = btn.dataset.identifier;
+                const title = btn.dataset.title;
+                const creator = btn.dataset.creator;
+                await this.addArchiveTrackToLibrary(identifier, title, creator);
+            });
+        });
+    }
+
+    async addArchiveTrack(identifier, title, creator, playNow = false) {
+        const trackDetails = await ArchiveApi.getTrackDetails(identifier);
+        if (!trackDetails || !trackDetails.streamUrl) {
+            alert('Не удалось получить ссылку на трек.');
+            return;
+        }
+        const track = {
+            id: null,
+            name: `${trackDetails.title} - ${trackDetails.creator}`,
+            duration: trackDetails.duration,
+            streamUrl: trackDetails.streamUrl,
+            source: 'archive',
+            archiveId: identifier
+        };
+        if (playNow) {
+            await this.player.playNow(track);
+        } else {
+            await this.player.addToQueue([track]);
+        }
+    }
+
+    async addArchiveTrackToLibrary(identifier, title, creator) {
+        const trackDetails = await ArchiveApi.getTrackDetails(identifier);
+        if (!trackDetails || !trackDetails.streamUrl) {
+            alert('Не удалось получить ссылку на трек.');
+            return;
+        }
+        const track = {
+            id: utils.generateId(),
+            name: `${trackDetails.title} - ${trackDetails.creator}`,
+            duration: trackDetails.duration,
+            streamUrl: trackDetails.streamUrl,
+            source: 'archive',
+            archiveId: identifier
+        };
+        await this.db.addTrack(track);
+        alert('Трек добавлен в библиотеку');
+    }
+
+    async startRadio() {
+        const radioKeywords = ['rock', 'jazz', 'classical', 'electronic', 'pop', 'folk', 'blues', 'ambient', 'instrumental', 'piano', 'guitar'];
+        const randomKeyword = radioKeywords[Math.floor(Math.random() * radioKeywords.length)];
+        const container = document.getElementById('archive-results');
+        container.innerHTML = '<div>Загрузка радио...</div>';
+
+        const results = await ArchiveApi.search(randomKeyword, 10);
+        if (!results.length) {
+            alert('Не удалось найти треки для радио, попробуйте позже.');
+            container.innerHTML = '<div>Ничего не найдено.</div>';
+            return;
+        }
+
+        const trackPromises = results.map(item => ArchiveApi.getTrackDetails(item.identifier));
+        const tracksDetails = await Promise.all(trackPromises);
+
+        const tracks = tracksDetails
+            .filter(details => details && details.streamUrl)
+            .map(details => ({
+                id: null,
+                name: `${details.title} - ${details.creator}`,
+                duration: details.duration,
+                streamUrl: details.streamUrl,
+                source: 'archive',
+                archiveId: details.identifier
+            }));
+
+        if (tracks.length === 0) {
+            alert('Не удалось получить ссылки на треки.');
+            container.innerHTML = '<div>Не удалось загрузить радио.</div>';
+            return;
+        }
+
+        await this.player.clearQueue();
+        this.player.addStreamTracks(tracks);
+        await this.player.loadTrack(tracks[0]);
+        this.player.play();
+
+        container.innerHTML = '<div>Радио запущено! Треки добавлены в очередь.</div>';
+    }
+
+    async loadArchiveTrackDetail(identifier) {
+        const container = document.getElementById('archive-track-detail-container');
+        if (!container) return;
+        container.innerHTML = '<div>Загрузка информации...</div>';
+        const details = await ArchiveApi.getTrackDetails(identifier);
+        if (!details) {
+            container.innerHTML = '<div>Не удалось загрузить информацию о треке.</div>';
+            return;
+        }
+        const track = {
+            name: `${details.title} - ${details.creator}`,
+            duration: details.duration,
+            streamUrl: details.streamUrl
+        };
+        container.innerHTML = `
+            <div class="track-detail">
+                <h3>${utils.escapeHtml(track.name)}</h3>
+                <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
+                <p><strong>Ссылка на прослушивание:</strong> <a href="${track.streamUrl}" target="_blank">${track.streamUrl}</a></p>
+                <div class="track-detail-actions">
+                    <button id="archive-track-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
+                    <button id="archive-track-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> Добавить в очередь</button>
+                    <button id="archive-track-add-to-library"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить в библиотеку</button>
+                </div>
+            </div>
+        `;
+        document.getElementById('archive-track-play-now').addEventListener('click', async () => {
+            const trackObj = {
+                id: null,
+                name: track.name,
+                duration: track.duration,
+                streamUrl: track.streamUrl,
+                source: 'archive',
+                archiveId: identifier
+            };
+            await this.player.playNow(trackObj);
+        });
+        document.getElementById('archive-track-add-to-queue').addEventListener('click', async () => {
+            const trackObj = {
+                id: null,
+                name: track.name,
+                duration: track.duration,
+                streamUrl: track.streamUrl,
+                source: 'archive',
+                archiveId: identifier
+            };
+            await this.player.addToQueue([trackObj]);
+        });
+        document.getElementById('archive-track-add-to-library').addEventListener('click', async () => {
+            const trackObj = {
+                id: utils.generateId(),
+                name: track.name,
+                duration: track.duration,
+                streamUrl: track.streamUrl,
+                source: 'archive',
+                archiveId: identifier
+            };
+            await this.db.addTrack(trackObj);
+            alert('Трек добавлен в библиотеку');
+        });
+        const backBtn = document.getElementById('back-to-archive');
+        if (backBtn) {
+            backBtn.onclick = () => Router.navigate('archive');
         }
     }
 };

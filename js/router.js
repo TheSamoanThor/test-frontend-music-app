@@ -17,7 +17,7 @@ const Router = {
 
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
-        if (!hash.startsWith('track/') && this.ui) {
+        if (!hash.startsWith('track/') && !hash.startsWith('archive-track/') && this.ui) {
             this.ui.unregisterTrackDetailVisualizer();
         }
 
@@ -37,6 +37,10 @@ const Router = {
                 document.getElementById('page-playlists').classList.remove('hidden');
                 this.ui.renderPlaylists();
                 break;
+            case 'archive':
+                document.getElementById('page-archive').classList.remove('hidden');
+                this.ui.renderArchivePage();
+                break;
             case 'settings':
                 document.getElementById('page-settings').classList.remove('hidden');
                 this.ui.syncSettingsPage();
@@ -47,6 +51,14 @@ const Router = {
                     this.ui.loadTrackDetail(param);
                 } else {
                     this.navigate('library');
+                }
+                break;
+            case 'archive-track':
+                document.getElementById('page-archive-track').classList.remove('hidden');
+                if (param) {
+                    this.ui.loadArchiveTrackDetail(param);
+                } else {
+                    this.navigate('archive');
                 }
                 break;
             default:

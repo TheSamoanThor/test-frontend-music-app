@@ -18,8 +18,14 @@ const DragDrop = {
                 const items = Array.from(evt.target.children).map(li => li.dataset.id);
                 if (items.length === 0) return;
 
-                this.ui.player.queue = items;
-                await this.ui.db.setQueue(items);
+                // Преобразуем массив ID в массив объектов треков
+                const trackObjects = [];
+                for (let id of items) {
+                    const track = await this.ui.db.getTrack(id);
+                    if (track) trackObjects.push(track);
+                }
+                this.ui.player.queue = trackObjects;
+                await this.ui.db.setQueue(items); // сохраняем только ID
 
                 if (this.ui.player.currentTrack) {
                     const newIndex = items.indexOf(this.ui.player.currentTrack.id);
@@ -27,6 +33,8 @@ const DragDrop = {
                 }
 
                 this.updateQueueItemIndices();
+                // Обновляем отображение очереди (чтобы кнопки были с правильными индексами)
+                this.ui.renderQueue(trackObjects);
             }
         });
     },

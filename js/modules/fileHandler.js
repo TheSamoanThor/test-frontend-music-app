@@ -120,6 +120,8 @@ var FileHandler = class FileHandler {
     }
 
     async getFileForTrack(track) {
+        // Для стримов не пытаемся получить файл
+        if (track.streamUrl) return null;
         if (track.handle) {
             try {
                 return await track.handle.getFile();

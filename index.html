@@ -107,6 +107,14 @@
             <symbol id="icon-arrow-down" viewBox="0 0 24 24">
                 <path d="M7 10l5 5 5-5z"/>
             </symbol>
+            <!-- Иконка для archive.org -->
+            <!-- <symbol id="icon-archive" viewBox="0 0 24 24">
+                <path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/>
+            </symbol> -->
+            <!-- Лупа -->
+            <symbol id="icon-archive" viewBox="0 0 50 50">
+                <path d="M 21 3 C 11.621094 3 4 10.621094 4 20 C 4 29.378906 11.621094 37 21 37 C 24.710938 37 28.140625 35.804688 30.9375 33.78125 L 44.09375 46.90625 L 46.90625 44.09375 L 33.90625 31.0625 C 36.460938 28.085938 38 24.222656 38 20 C 38 10.621094 30.378906 3 21 3 Z M 21 5 C 29.296875 5 36 11.703125 36 20 C 36 28.296875 29.296875 35 21 35 C 12.703125 35 6 28.296875 6 20 C 6 11.703125 12.703125 5 21 5 Z"></path>
+            </symbol>
         </defs>
     </svg>
 
@@ -125,6 +133,9 @@
                     </button>
                     <button class="nav-btn" data-page="playlists">
                         <svg class="icon"><use href="#icon-playlist"></use></svg> Плейлисты
+                    </button>
+                    <button class="nav-btn" data-page="archive">
+                        <svg class="icon"><use href="#icon-archive"></use></svg> Archive.org
                     </button>
                     <button class="nav-btn" data-page="settings">
                         <svg class="icon"><use href="#icon-settings"></use></svg> Настройки
@@ -197,6 +208,18 @@
                     </button>
                 </div>
                 <div id="playlists-list" class="playlists-list"></div>
+            </div>
+
+            <div class="page" id="page-archive">
+                <h2>
+                    <svg class="icon"><use href="#icon-archive"></use></svg> Internet Archive Music
+                </h2>
+                <div class="search-bar">
+                    <input type="text" id="archive-search-input" placeholder="Поиск музыки...">
+                    <button id="archive-search-btn">Найти</button>
+                    <button id="archive-radio-btn">Радио</button>
+                </div>
+                <div id="archive-results" class="track-list"></div>
             </div>
 
             <div class="page" id="page-settings">
@@ -281,7 +304,6 @@
                         <label for="visualizer-smoothing">Сглаживание:</label>
                         <input type="range" id="visualizer-smoothing" min="0" max="0.9" step="0.1" value="0.5">
                     </div>
-                    <!-- Новые настройки симметрии -->
                     <div class="setting-item">
                         <label for="visualizer-bar-sym-x">Симметрия столбцов по X (лево-право):</label>
                         <input type="checkbox" id="visualizer-bar-sym-x">
@@ -326,6 +348,17 @@
                     <svg class="icon"><use href="#icon-arrow-left"></use></svg> Назад в библиотеку
                 </button>
             </div>
+
+            <!-- Новая страница для архивных треков -->
+            <div class="page" id="page-archive-track">
+                <h2>
+                    <svg class="icon"><use href="#icon-archive"></use></svg> Детали трека из архива
+                </h2>
+                <div id="archive-track-detail-container"></div>
+                <button id="back-to-archive" class="back-btn">
+                    <svg class="icon"><use href="#icon-arrow-left"></use></svg> Назад в Archive.org
+                </button>
+            </div>
         </main>
 
         <footer class="player-bar" id="player-bar">
@@ -364,6 +397,7 @@
     <script src="js/modules/themes.js"></script>
     <script src="js/modules/ui.js"></script>
     <script src="js/modules/dragDrop.js"></script>
+    <script src="js/modules/archiveApi.js"></script>
     <script src="js/router.js"></script>
     <script src="js/main.js"></script>
 

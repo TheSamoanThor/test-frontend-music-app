@@ -1324,3 +1324,66 @@ input[type="checkbox"]:focus {
         font-size: 1.1em;
     }
 }
+
+/* ========== Стили для страницы Archive.org ========== */
+#page-archive .search-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+#archive-search-input {
+    flex: 1;
+    min-width: 150px;
+}
+#archive-search-btn,
+#archive-radio-btn {
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+#archive-radio-btn {
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+#archive-radio-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+@media (max-width: 768px) {
+    #page-archive .search-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #archive-search-input {
+        width: 100%;
+    }
+    #archive-search-btn,
+    #archive-radio-btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+}
+@media (max-width: 465px) {
+    #archive-results .track-item {
+        padding: 0.5rem;
+    }
+    #archive-results .track-item div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+    #archive-results .track-item button {
+        width: 100%;
+        margin: 0.2rem 0;
+        justify-content: center;
+    }
+}

@@ -16,17 +16,17 @@ var ThemeManager = class ThemeManager {
                 '--text-color': '#e0e0e0',
                 '--primary-color': '#bb86fc',
                 '--secondary-bg': '#2d2d2d',
-                '--border-color': '#444',
+                '--border-color': '#444444',
                 '--player-bg': '#252525',
                 '--hover-bg': '#3a3a3a'
             },
             dark2: {
-                '--bg-color': '#000',
+                '--bg-color': '#000000',
                 '--text-color': '#e0e0e0',
                 '--primary-color': '#3a3a3a',
-                '--secondary-bg': '#000',
-                '--border-color': '#444',
-                '--player-bg': '#000',
+                '--secondary-bg': '#000000',
+                '--border-color': '#444444',
+                '--player-bg': '#000000',
                 '--hover-bg': '#3a3a3a'
             },
             'light-blue': {

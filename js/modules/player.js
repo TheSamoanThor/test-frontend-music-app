@@ -5,6 +5,7 @@ var Player = class Player {
         this.db = db;
         this.fileHandler = fileHandler;
         this.audio = new Audio();
+        this.audio.crossOrigin = "anonymous";
         this.currentTrack = null;
         this.queue = [];
         this.currentIndex = -1;
@@ -65,7 +66,12 @@ var Player = class Player {
 
     async loadQueue() {
         try {
-            this.queue = await this.db.getQueue() || [];
+            const queueIds = await this.db.getQueue() || [];
+            this.queue = [];
+            for (let id of queueIds) {
+                const track = await this.db.getTrack(id);
+                if (track) this.queue.push(track);
+            }
             if (this.ui) this.ui.renderQueue(this.queue);
             if (this.queue.length > 0 && this.currentIndex === -1) {
                 this.currentIndex = 0;
@@ -76,11 +82,61 @@ var Player = class Player {
         }
     }
 
-    async loadTrack(trackId) {
-        const track = await this.db.getTrack(trackId);
-        if (!track) {
-            console.warn(`Track ${trackId} not found`);
-            return false;
+    async loadTrack(track) {
+        if (!track) return false;
+
+        if (track.streamUrl) {
+            if (this.currentObjectUrl) {
+                URL.revokeObjectURL(this.currentObjectUrl);
+                this.currentObjectUrl = null;
+            }
+            this.currentTrack = track;
+            this.audio.src = track.streamUrl;
+            return new Promise((resolve) => {
+                let resolved = false;
+                let timeoutId = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        cleanup();
+                        console.error(`Timeout loading stream for ${track.name}`);
+                        resolve(false);
+                    }
+                }, 30000);
+
+                const onCanPlay = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    clearTimeout(timeoutId);
+                    cleanup();
+                    this.updateEffectiveVolume().then(() => {
+                        if (this.isPlaying) {
+                            this.audio.play().catch(e => console.warn('Auto-play failed', e));
+                        }
+                        if (this.ui) this.ui.updateCurrentTrack(track, null);
+                        resolve(true);
+                    }).catch(() => resolve(false));
+                };
+                const onError = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    clearTimeout(timeoutId);
+                    cleanup();
+                    console.error(`Failed to load stream for ${track.name}`);
+                    const index = this.queue.findIndex(t => t.id === track.id && t.streamUrl === track.streamUrl);
+                    if (index !== -1) {
+                        this.removeFromQueue(index).then(() => resolve(false));
+                    } else {
+                        resolve(false);
+                    }
+                };
+                const cleanup = () => {
+                    this.audio.removeEventListener('canplaythrough', onCanPlay);
+                    this.audio.removeEventListener('error', onError);
+                };
+                this.audio.addEventListener('canplaythrough', onCanPlay);
+                this.audio.addEventListener('error', onError);
+                this.audio.load();
+            });
         }
 
         if (this.currentObjectUrl) {
@@ -90,8 +146,8 @@ var Player = class Player {
 
         const file = await this.fileHandler.getFileForTrack(track);
         if (!file) {
-            console.warn(`File not accessible for track: ${track.name} (${trackId})`);
-            const index = this.queue.indexOf(trackId);
+            console.warn(`File not accessible for track: ${track.name}`);
+            const index = this.queue.findIndex(t => t.id === track.id);
             if (index !== -1) {
                 await this.removeFromQueue(index);
             }
@@ -117,17 +173,16 @@ var Player = class Player {
         const pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
         if (this.ui) this.ui.updateCurrentTrack(track, pictureUrl);
 
-        if (this.ui && this.ui.popup && this.ui.popup.isOpenForCurrent) {
-            this.ui.popup.updateForTrack(track, pictureUrl, true);
-        }
-
         return true;
     }
 
     async updateEffectiveVolume() {
         if (!this.currentTrack) return;
         try {
-            const tags = await this.db.getTags(this.currentTrack.id) || [];
+            let tags = [];
+            if (this.currentTrack.id) {
+                tags = await this.db.getTags(this.currentTrack.id) || [];
+            }
             let factor;
             const volFactor = utils.extractVolumeFactorFromTags(tags);
             if (volFactor !== null) {
@@ -172,24 +227,25 @@ var Player = class Player {
     async next(autoplay = false) {
         if (this.queue.length === 0) return;
 
-        const startIndex = this.currentIndex;
         let attempts = 0;
         const maxAttempts = this.queue.length;
 
         while (attempts < maxAttempts) {
-            this.currentIndex = (this.currentIndex + 1) % this.queue.length;
-            const success = await this.loadTrack(this.queue[this.currentIndex]);
+            const nextIndex = (this.currentIndex + 1) % this.queue.length;
+            const nextTrack = this.queue[nextIndex];
+            const success = await this.loadTrack(nextTrack);
             if (success) {
+                this.currentIndex = nextIndex;
                 if (autoplay) {
                     try {
                         await this.audio.play();
-                    } catch (e) {
-                        console.warn('Auto-play after next failed', e);
-                    }
+                    } catch (e) {}
                 }
                 return;
+            } else {
+                await this.removeFromQueue(nextIndex);
+                attempts++;
             }
-            attempts++;
         }
 
         console.error('Все треки в очереди недоступны');
@@ -202,24 +258,25 @@ var Player = class Player {
     async prev(autoplay = false) {
         if (this.queue.length === 0) return;
 
-        const startIndex = this.currentIndex;
         let attempts = 0;
         const maxAttempts = this.queue.length;
 
         while (attempts < maxAttempts) {
-            this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
-            const success = await this.loadTrack(this.queue[this.currentIndex]);
+            const prevIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
+            const prevTrack = this.queue[prevIndex];
+            const success = await this.loadTrack(prevTrack);
             if (success) {
+                this.currentIndex = prevIndex;
                 if (autoplay) {
                     try {
                         await this.audio.play();
-                    } catch (e) {
-                        console.warn('Auto-play after prev failed', e);
-                    }
+                    } catch (e) {}
                 }
                 return;
+            } else {
+                await this.removeFromQueue(prevIndex);
+                attempts++;
             }
-            attempts++;
         }
 
         console.error('Все треки в очереди недоступны');
@@ -229,9 +286,18 @@ var Player = class Player {
         }
     }
 
-    async addToQueue(trackIds) {
-        this.queue.push(...trackIds);
-        await this.db.setQueue(this.queue);
+    async addToQueue(tracks) {
+        const trackObjects = [];
+        for (let item of tracks) {
+            if (typeof item === 'string') {
+                const track = await this.db.getTrack(item);
+                if (track) trackObjects.push(track);
+            } else {
+                trackObjects.push(item);
+            }
+        }
+        this.queue.push(...trackObjects);
+        await this.saveQueue();
         if (this.ui) this.ui.renderQueue(this.queue);
     }
 
@@ -254,7 +320,7 @@ var Player = class Player {
         } else if (index < this.currentIndex) {
             this.currentIndex--;
         }
-        await this.db.setQueue(this.queue);
+        await this.saveQueue();
         if (this.ui) this.ui.renderQueue(this.queue);
     }
 
@@ -264,7 +330,7 @@ var Player = class Player {
         this.currentTrack = null;
         this.audio.pause();
         this.isPlaying = false;
-        await this.db.setQueue([]);
+        await this.saveQueue();
         if (this.ui) {
             this.ui.renderQueue([]);
             this.ui.updateCurrentTrack(null);
@@ -274,7 +340,7 @@ var Player = class Player {
 
     async shuffleQueue() {
         this.queue = this.shuffleArray(this.queue);
-        await this.db.setQueue(this.queue);
+        await this.saveQueue();
         if (this.ui) this.ui.renderQueue(this.queue);
     }
 
@@ -308,7 +374,7 @@ var Player = class Player {
         if (allowDuplicates) {
             for (let i = 0; i < count; i++) {
                 const randomIndex = Math.floor(Math.random() * availableTracks.length);
-                selected.push(availableTracks[randomIndex].id);
+                selected.push(availableTracks[randomIndex]);
             }
         } else {
             if (count > availableTracks.length) {
@@ -316,7 +382,7 @@ var Player = class Player {
             }
             const shuffled = this.shuffleArray([...availableTracks]);
             for (let i = 0; i < count; i++) {
-                selected.push(shuffled[i].id);
+                selected.push(shuffled[i]);
             }
         }
 
@@ -341,16 +407,49 @@ var Player = class Player {
         }
     }
 
-    async playNow(trackId) {
-        this.queue = [trackId];
-        this.currentIndex = 0;
-        await this.db.setQueue(this.queue);
-        if (this.ui) this.ui.renderQueue(this.queue);
+    async playNow(track) {
+        if (typeof track === 'string') {
+            track = await this.db.getTrack(track);
+            if (!track) return;
+        }
+
+        let currentIndex = this.currentIndex;
+        if (currentIndex >= 0 && currentIndex < this.queue.length) {
+            this.queue[currentIndex] = track;
+        } else {
+            this.queue.unshift(track);
+            currentIndex = 0;
+        }
+
+        this.currentIndex = currentIndex;
         
-        const success = await this.loadTrack(trackId);
+        if (track.id) {
+            await this.saveQueue();
+        }
+
+        const success = await this.loadTrack(track);
         if (success) {
             this.play();
+        } else {
+            alert('Не удалось воспроизвести трек. Возможно, файл недоступен.');
+            this.queue.splice(currentIndex, 1);
+            if (this.queue.length === 0) {
+                this.currentTrack = null;
+                if (this.ui) this.ui.updateCurrentTrack(null);
+            } else {
+                await this.loadTrack(this.queue[this.currentIndex]);
+            }
         }
+    }
+
+    async saveQueue() {
+        const queueIds = this.queue.filter(t => t.id).map(t => t.id);
+        await this.db.setQueue(queueIds);
+    }
+
+    addStreamTracks(tracks) {
+        this.queue.push(...tracks);
+        if (this.ui) this.ui.renderQueue(this.queue);
     }
 
     initAudioContext() {

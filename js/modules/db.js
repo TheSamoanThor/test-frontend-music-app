@@ -86,6 +86,11 @@ var Database = class Database {
         });
     }
 
+    async getTracksBySource(source) {
+        const all = await this.getAllTracks();
+        return all.filter(t => t.source === source);
+    }
+
     async deleteTrack(id) {
         const tx = this.db.transaction(this.stores.tracks, 'readwrite');
         const store = tx.objectStore(this.stores.tracks);
