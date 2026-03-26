@@ -118,7 +118,8 @@ var UI = class UI {
                 if (this.player.currentTrack.id) {
                     Router.navigate('track', this.player.currentTrack.id);
                 } else if (this.player.currentTrack.archiveId) {
-                    Router.navigate('archive-track', this.player.currentTrack.archiveId);
+                    // Для архивных треков передаём префикс archive:
+                    Router.navigate('track', `archive:${this.player.currentTrack.archiveId}`);
                 }
             }
         });
@@ -559,7 +560,7 @@ var UI = class UI {
                     <input type="text" placeholder="новый тег" class="tag-input" data-id="${track.id}">
                     <button class="exclude-btn" data-id="${track.id}">${isExcluded ? '<svg class="icon"><use href="#icon-check"></use></svg> Включить' : '<svg class="icon"><use href="#icon-ban"></use></svg> Исключить'}</button>
                     <button class="play-now-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
-                    <button class="play-immediate-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-play"></use></svg> Сейчас</button>
+                    <button class="play-immediate-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
                     <button class="add-to-playlist-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-playlist"></use></svg> В плейлист</button>
                     <button class="details-btn" data-id="${track.id}"><svg class="icon"><use href="#icon-info"></use></svg> Подробнее</button>
                 </div>
@@ -664,7 +665,6 @@ var UI = class UI {
         });
     }
 
-    // Новый метод для обработки кнопок очереди
     attachQueueHandlers() {
         document.querySelectorAll('.queue-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -706,7 +706,6 @@ var UI = class UI {
 
         for (let i = 0; i < queue.length; i++) {
             let track = queue[i];
-            // Если track – это ID (строка), загружаем полный объект
             if (typeof track === 'string') {
                 track = await this.db.getTrack(track);
                 if (!track) continue;
@@ -776,10 +775,13 @@ var UI = class UI {
 
         if (window.location.hash.startsWith('#track/')) {
             const currentTrackIdInHash = window.location.hash.split('/')[1];
-            if (currentTrackIdInHash !== track.id) {
+            if (track && ((track.id && currentTrackIdInHash === track.id) || 
+                (track.archiveId && currentTrackIdInHash === `archive:${track.archiveId}`))) {
+                this.loadTrackDetail(currentTrackIdInHash);
+            } else if (track && track.id) {
                 Router.navigate('track', track.id);
-            } else {
-                this.loadTrackDetail(track.id);
+            } else if (track && track.archiveId) {
+                Router.navigate('track', `archive:${track.archiveId}`);
             }
         } else {
             this.updateTrackPlaybackControls();
@@ -800,7 +802,12 @@ var UI = class UI {
     updateTrackPlaybackControls() {
         const controls = document.getElementById('track-playback-controls');
         if (!controls) return;
-        if (this.player.currentTrack && window.location.hash.includes(`track/${this.player.currentTrack.id}`)) {
+        const currentTrack = this.player.currentTrack;
+        const hash = window.location.hash;
+        if (currentTrack && (
+            (currentTrack.id && hash.includes(`track/${currentTrack.id}`)) ||
+            (currentTrack.archiveId && hash.includes(`track/archive:${currentTrack.archiveId}`))
+        )) {
             controls.classList.remove('hidden');
             document.getElementById('track-volume').value = this.player.baseVolume;
             this.setPlayPauseIcon(this.player.isPlaying);
@@ -925,7 +932,6 @@ var UI = class UI {
 
         await this.renderThemeFineTuning();
 
-        // === Визуализатор ===
         const enabledCheck = document.getElementById('visualizer-enabled');
         const typeSelect = document.getElementById('visualizer-type');
         const sensitivityRange = document.getElementById('visualizer-sensitivity');
@@ -935,7 +941,6 @@ var UI = class UI {
         const barSymY = document.getElementById('visualizer-bar-sym-y');
         const waveSymX = document.getElementById('visualizer-wave-sym-x');
 
-        // Включение
         if (enabledCheck) {
             enabledCheck.checked = this.player.visualizerEnabled;
             const newCheck = enabledCheck.cloneNode(true);
@@ -951,20 +956,18 @@ var UI = class UI {
             });
         }
 
-        // Тип визуализатора
         if (typeSelect) {
             const currentType = this.player.visualizerType;
             typeSelect.value = currentType;
             const newSelect = typeSelect.cloneNode(true);
             typeSelect.parentNode.replaceChild(newSelect, typeSelect);
-            newSelect.value = currentType; // явно устанавливаем значение
+            newSelect.value = currentType;
             newSelect.addEventListener('change', async (e) => {
                 this.player.visualizerType = e.target.value;
                 await this.player.saveVisualizerSettings();
             });
         }
 
-        // Чувствительность
         if (sensitivityRange) {
             sensitivityRange.value = this.player.visualizerSensitivity;
             const newRange = sensitivityRange.cloneNode(true);
@@ -975,7 +978,6 @@ var UI = class UI {
             });
         }
 
-        // Количество полос
         if (barCountRange) {
             barCountRange.value = this.player.visualizerBarCount;
             const newRange = barCountRange.cloneNode(true);
@@ -986,7 +988,6 @@ var UI = class UI {
             });
         }
 
-        // Сглаживание
         if (smoothingRange) {
             smoothingRange.value = this.player.visualizerSmoothing;
             const newRange = smoothingRange.cloneNode(true);
@@ -1000,7 +1001,6 @@ var UI = class UI {
             });
         }
 
-        // Симметрия X для столбцов
         if (barSymX) {
             barSymX.checked = this.player.visualizerBarSymX;
             const newBarSymX = barSymX.cloneNode(true);
@@ -1011,7 +1011,6 @@ var UI = class UI {
             });
         }
 
-        // Симметрия Y для столбцов
         if (barSymY) {
             barSymY.checked = this.player.visualizerBarSymY;
             const newBarSymY = barSymY.cloneNode(true);
@@ -1022,7 +1021,6 @@ var UI = class UI {
             });
         }
 
-        // Симметрия X для волны
         if (waveSymX) {
             waveSymX.checked = this.player.visualizerWaveSymX;
             const newWaveSymX = waveSymX.cloneNode(true);
@@ -1097,172 +1095,265 @@ var UI = class UI {
         }
     }
 
-    async loadTrackDetail(trackId) {
-        const track = await this.db.getTrack(trackId);
-        if (!track) {
-            Router.navigate('library');
-            return;
-        }
+    async loadTrackDetail(param) {
+        const isArchive = param.startsWith('archive:');
+        const identifier = isArchive ? param.substring(8) : param;
 
-        const tags = await this.db.getTags(trackId);
-        const isExcluded = tags.includes('excluded');
-
-        const file = await this.fileHandler.getFileForTrack(track);
-        let pictureUrl = null;
-        if (file) {
-            pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
-        }
-
-        const container = document.getElementById('track-detail-container');
-        const tagsHtml = tags.length > 0 
-            ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${trackId}" data-tag="${t}"><svg class="icon"><use href="#icon-close"></use></svg></button></span>`).join(' ')
-            : 'нет';
-
-        let mediaHtml;
-        if (pictureUrl) {
-            mediaHtml = `
-                <div class="track-detail-media">
-                    <img src="${pictureUrl}" alt="cover" class="track-detail-cover" style="max-width:200px; max-height:200px; border-radius:8px;">
-                    <canvas id="track-detail-visualizer" width="200" height="200" style="display:none;"></canvas>
-                    <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
-                </div>
-            `;
-        } else {
-            mediaHtml = `
-                <div class="track-detail-media">
-                    <img src="" alt="cover" class="track-detail-cover" style="display:none;">
-                    <canvas id="track-detail-visualizer" width="200" height="200" style="display:block;"></canvas>
-                    <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
-                </div>
-            `;
-        }
-
-        container.innerHTML = `
-            <div class="track-detail">
-                ${mediaHtml}
-                <h3>${track.name}</h3>
-                <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
-                <p><strong>Путь:</strong> ${track.path || 'неизвестно'}</p>
-                <p><strong>Теги:</strong> ${tagsHtml}</p>
-                <p><strong>Исключён:</strong> ${isExcluded ? 'да' : 'нет'}</p>
-                <div class="track-detail-actions">
-                    <button id="detail-add-tag"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить тег</button>
-                    <input type="text" id="detail-new-tag" placeholder="новый тег">
-                    <button id="detail-toggle-exclude">${isExcluded ? '<svg class="icon"><use href="#icon-check"></use></svg> Вернуть в случайный выбор' : '<svg class="icon"><use href="#icon-ban"></use></svg> Исключить из случайного выбора'}</button>
-                    <button id="detail-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
-                    <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
-                    <button id="detail-add-to-playlist"><svg class="icon"><use href="#icon-playlist"></use></svg> В плейлист</button>
-                </div>
-            </div>
-        `;
-
-        if (this.detailPictureUrl) {
-            URL.revokeObjectURL(this.detailPictureUrl);
-            this.detailPictureUrl = null;
-        }
-        if (pictureUrl) {
-            this.detailPictureUrl = pictureUrl;
-        }
-
-        const img = document.getElementById('track-detail-cover');
-        const canvas = document.getElementById('track-detail-visualizer');
-        const noCoverDiv = document.querySelector('.track-detail-media .no-cover');
-
-        if (pictureUrl) {
-            img.onload = () => {
-                img.style.display = 'block';
-                if (canvas) canvas.style.display = 'none';
-                if (noCoverDiv) noCoverDiv.style.display = 'none';
-                this.unregisterTrackDetailVisualizer();
+        if (isArchive) {
+            // === Загрузка трека из Internet Archive ===
+            const details = await ArchiveApi.getTrackDetails(identifier);
+            if (!details) {
+                Router.navigate('archive');
+                return;
+            }
+            const track = {
+                id: null,
+                name: `${details.title} - ${details.creator}`,
+                duration: details.duration,
+                streamUrl: details.streamUrl,
+                source: 'archive',
+                archiveId: identifier
             };
-            img.onerror = () => {
-                img.style.display = 'none';
-                if (canvas) canvas.style.display = 'block';
-                if (noCoverDiv) noCoverDiv.style.display = 'none';
-                if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === trackId) {
-                    this.registerTrackDetailVisualizer();
+
+            // Проверяем, добавлен ли уже этот трек в библиотеку
+            const existingTracks = await this.db.getAllTracks();
+            const existing = existingTracks.find(t => t.archiveId === identifier);
+            const isInLibrary = !!existing;
+
+            const container = document.getElementById('track-detail-container');
+            container.innerHTML = `
+                <div class="track-detail">
+                    <div class="track-detail-media">
+                        <img src="" alt="cover" class="track-detail-cover" style="display:none;">
+                        <canvas id="track-detail-visualizer" width="200" height="200" style="display:block;"></canvas>
+                        <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
+                    </div>
+                    <h3>${utils.escapeHtml(track.name)}</h3>
+                    <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
+                    <p><strong>Ссылка:</strong> <a href="${track.streamUrl}" target="_blank">${track.streamUrl}</a></p>
+                    <div class="track-detail-actions">
+                        <button id="detail-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
+                        <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
+                        ${isInLibrary ? 
+                            `<button id="detail-delete-from-library" class="delete-btn"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить из библиотеки</button>` :
+                            `<button id="detail-add-to-library"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить в библиотеку</button>`
+                        }
+                    </div>
+                </div>
+            `;
+
+            // Обработчики
+            document.getElementById('detail-add-to-queue').addEventListener('click', async () => {
+                const trackObj = { ...track, id: null };
+                await this.player.addToQueue([trackObj]);
+            });
+            document.getElementById('detail-play-now').addEventListener('click', async () => {
+                const trackObj = { ...track, id: null };
+                await this.player.playNow(trackObj);
+            });
+
+            if (isInLibrary) {
+                const deleteBtn = document.getElementById('detail-delete-from-library');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', async () => {
+                        await this.deleteTrack(existing.id);
+                        // После удаления перенаправляем на страницу архива
+                        Router.navigate('archive');
+                    });
                 }
-            };
-            if (img.complete) {
-                if (img.naturalWidth > 0) {
+            } else {
+                const addBtn = document.getElementById('detail-add-to-library');
+                if (addBtn) {
+                    addBtn.addEventListener('click', async () => {
+                        const trackObj = { ...track, id: utils.generateId() };
+                        await this.db.addTrack(trackObj);
+                        alert('Трек добавлен в библиотеку');
+                        // Обновляем страницу, чтобы кнопка "Добавить" сменилась на "Удалить"
+                        this.loadTrackDetail(`archive:${identifier}`);
+                    });
+                }
+            }
+
+            if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.archiveId === identifier) {
+                this.registerTrackDetailVisualizer();
+            } else {
+                this.unregisterTrackDetailVisualizer();
+            }
+        } else {
+            // === Загрузка локального трека ===
+            const track = await this.db.getTrack(identifier);
+            if (!track) {
+                Router.navigate('library');
+                return;
+            }
+
+            const tags = await this.db.getTags(track.id);
+            const isExcluded = tags.includes('excluded');
+
+            const file = await this.fileHandler.getFileForTrack(track);
+            let pictureUrl = null;
+            if (file) {
+                pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
+            }
+
+            const container = document.getElementById('track-detail-container');
+            const tagsHtml = tags.length > 0 
+                ? tags.map(t => `<span class="tag-badge">${t} <button class="remove-tag-btn" data-track-id="${track.id}" data-tag="${t}"><svg class="icon"><use href="#icon-close"></use></svg></button></span>`).join(' ')
+                : 'нет';
+
+            let mediaHtml;
+            if (pictureUrl) {
+                mediaHtml = `
+                    <div class="track-detail-media">
+                        <img id="track-detail-cover" src="${pictureUrl}" alt="cover" class="track-detail-cover" style="max-width:200px; max-height:200px; border-radius:8px;">
+                        <canvas id="track-detail-visualizer" width="200" height="200" style="display:none;"></canvas>
+                        <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
+                    </div>
+                `;
+            } else {
+                mediaHtml = `
+                    <div class="track-detail-media">
+                        <img id="track-detail-cover" src="" alt="cover" class="track-detail-cover" style="display:none;">
+                        <canvas id="track-detail-visualizer" width="200" height="200" style="display:block;"></canvas>
+                        <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="track-detail">
+                    ${mediaHtml}
+                    <h3>${track.name}</h3>
+                    <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
+                    <p><strong>Путь:</strong> ${track.path || 'неизвестно'}</p>
+                    <p><strong>Теги:</strong> ${tagsHtml}</p>
+                    <p><strong>Исключён:</strong> ${isExcluded ? 'да' : 'нет'}</p>
+                    <div class="track-detail-actions">
+                        <button id="detail-add-tag"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить тег</button>
+                        <input type="text" id="detail-new-tag" placeholder="новый тег">
+                        <button id="detail-toggle-exclude">${isExcluded ? '<svg class="icon"><use href="#icon-check"></use></svg> Вернуть в случайный выбор' : '<svg class="icon"><use href="#icon-ban"></use></svg> Исключить из случайного выбора'}</button>
+                        <button id="detail-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
+                        <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
+                        <button id="detail-add-to-playlist"><svg class="icon"><use href="#icon-playlist"></use></svg> В плейлист</button>
+                        <button id="detail-delete-from-library" class="delete-btn"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить из библиотеки</button>
+                    </div>
+                </div>
+            `;
+
+            if (this.detailPictureUrl) {
+                URL.revokeObjectURL(this.detailPictureUrl);
+                this.detailPictureUrl = null;
+            }
+            if (pictureUrl) {
+                this.detailPictureUrl = pictureUrl;
+            }
+
+            const img = document.getElementById('track-detail-cover');
+            const canvas = document.getElementById('track-detail-visualizer');
+            const noCoverDiv = document.querySelector('.track-detail-media .no-cover');
+
+            if (pictureUrl) {
+                img.onload = () => {
                     img.style.display = 'block';
                     if (canvas) canvas.style.display = 'none';
                     if (noCoverDiv) noCoverDiv.style.display = 'none';
-                } else {
+                    this.unregisterTrackDetailVisualizer();
+                };
+                img.onerror = () => {
                     img.style.display = 'none';
                     if (canvas) canvas.style.display = 'block';
                     if (noCoverDiv) noCoverDiv.style.display = 'none';
-                    if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === trackId) {
+                    if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === track.id) {
                         this.registerTrackDetailVisualizer();
                     }
-                }
-            }
-        } else {
-            if (img) img.style.display = 'none';
-            if (canvas) canvas.style.display = 'block';
-            if (noCoverDiv) noCoverDiv.style.display = 'none';
-            if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === trackId) {
-                this.registerTrackDetailVisualizer();
-            }
-        }
-
-        document.getElementById('detail-add-tag').addEventListener('click', async () => {
-            const newTag = document.getElementById('detail-new-tag').value.trim();
-            if (newTag && !tags.includes(newTag)) {
-                tags.push(newTag);
-                await this.db.setTags(trackId, tags);
-                this.loadTrackDetail(trackId);
-                if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
-                    await this.player.updateEffectiveVolume();
-                }
-            }
-        });
-
-        document.getElementById('detail-toggle-exclude').addEventListener('click', async () => {
-            const excludedTag = 'excluded';
-            if (tags.includes(excludedTag)) {
-                const newTags = tags.filter(t => t !== excludedTag);
-                await this.db.setTags(trackId, newTags);
-            } else {
-                tags.push(excludedTag);
-                await this.db.setTags(trackId, tags);
-            }
-            this.loadTrackDetail(trackId);
-            if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
-                await this.player.updateEffectiveVolume();
-            }
-        });
-
-        document.getElementById('detail-add-to-queue').addEventListener('click', async () => {
-            await this.player.addToQueue([trackId]);
-        });
-
-        document.getElementById('detail-play-now').addEventListener('click', async () => {
-            await this.player.playNow(trackId);
-        });
-
-        document.getElementById('detail-add-to-playlist').addEventListener('click', async () => {
-            const playlists = await this.db.getAllPlaylists();
-            if (playlists.length === 0) {
-                alert('Сначала создайте плейлист');
-                return;
-            }
-            const listStr = playlists.map((p, i) => `${i+1}: ${p.name}`).join('\n');
-            const choice = prompt(`Выберите плейлист (введите номер):\n${listStr}`);
-            if (choice) {
-                const index = parseInt(choice) - 1;
-                if (index >= 0 && index < playlists.length) {
-                    const playlist = playlists[index];
-                    if (!playlist.tracks.includes(trackId)) {
-                        playlist.tracks.push(trackId);
-                        await this.db.updatePlaylist(playlist);
-                        alert('Трек добавлен в плейлист');
+                };
+                if (img.complete) {
+                    if (img.naturalWidth > 0) {
+                        img.style.display = 'block';
+                        if (canvas) canvas.style.display = 'none';
+                        if (noCoverDiv) noCoverDiv.style.display = 'none';
                     } else {
-                        alert('Трек уже есть в плейлисте');
+                        img.style.display = 'none';
+                        if (canvas) canvas.style.display = 'block';
+                        if (noCoverDiv) noCoverDiv.style.display = 'none';
+                        if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === track.id) {
+                            this.registerTrackDetailVisualizer();
+                        }
                     }
                 }
+            } else {
+                if (img) img.style.display = 'none';
+                if (canvas) canvas.style.display = 'block';
+                if (noCoverDiv) noCoverDiv.style.display = 'none';
+                if (this.player.isPlaying && this.player.currentTrack && this.player.currentTrack.id === track.id) {
+                    this.registerTrackDetailVisualizer();
+                }
             }
-        });
+
+            document.getElementById('detail-add-tag').addEventListener('click', async () => {
+                const newTag = document.getElementById('detail-new-tag').value.trim();
+                if (newTag && !tags.includes(newTag)) {
+                    tags.push(newTag);
+                    await this.db.setTags(track.id, tags);
+                    this.loadTrackDetail(track.id);
+                    if (this.player.currentTrack && this.player.currentTrack.id === track.id) {
+                        await this.player.updateEffectiveVolume();
+                    }
+                }
+            });
+
+            document.getElementById('detail-toggle-exclude').addEventListener('click', async () => {
+                const excludedTag = 'excluded';
+                if (tags.includes(excludedTag)) {
+                    const newTags = tags.filter(t => t !== excludedTag);
+                    await this.db.setTags(track.id, newTags);
+                } else {
+                    tags.push(excludedTag);
+                    await this.db.setTags(track.id, tags);
+                }
+                this.loadTrackDetail(track.id);
+                if (this.player.currentTrack && this.player.currentTrack.id === track.id) {
+                    await this.player.updateEffectiveVolume();
+                }
+            });
+
+            document.getElementById('detail-add-to-queue').addEventListener('click', async () => {
+                await this.player.addToQueue([track.id]);
+            });
+
+            document.getElementById('detail-play-now').addEventListener('click', async () => {
+                await this.player.playNow(track.id);
+            });
+
+            document.getElementById('detail-add-to-playlist').addEventListener('click', async () => {
+                const playlists = await this.db.getAllPlaylists();
+                if (playlists.length === 0) {
+                    alert('Сначала создайте плейлист');
+                    return;
+                }
+                const listStr = playlists.map((p, i) => `${i+1}: ${p.name}`).join('\n');
+                const choice = prompt(`Выберите плейлист (введите номер):\n${listStr}`);
+                if (choice) {
+                    const index = parseInt(choice) - 1;
+                    if (index >= 0 && index < playlists.length) {
+                        const playlist = playlists[index];
+                        if (!playlist.tracks.includes(track.id)) {
+                            playlist.tracks.push(track.id);
+                            await this.db.updatePlaylist(playlist);
+                            alert('Трек добавлен в плейлист');
+                        } else {
+                            alert('Трек уже есть в плейлисте');
+                        }
+                    }
+                }
+            });
+
+            // Обработчик удаления для локального трека
+            document.getElementById('detail-delete-from-library').addEventListener('click', async () => {
+                await this.deleteTrack(track.id);
+                Router.navigate('library');
+            });
+        }
 
         this.updateTrackPlaybackControls();
     }
@@ -1461,8 +1552,9 @@ var UI = class UI {
                 <div class="track-tags">Скачиваний: ${item.downloads || 0}</div>
                 <div>
                     <button class="archive-add-to-queue" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
-                    <button class="archive-play-now" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-play"></use></svg> Сейчас</button>
+                    <button class="archive-play-now" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
                     <button class="archive-add-to-library" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-plus"></use></svg> В библиотеку</button>
+                    <button class="archive-details-btn" data-identifier="${item.identifier}" data-title="${utils.escapeHtml(title)}" data-creator="${utils.escapeHtml(creator)}"><svg class="icon"><use href="#icon-info"></use></svg> Подробнее</button>
                 </div>
             `;
             container.appendChild(li);
@@ -1493,6 +1585,13 @@ var UI = class UI {
                 const title = btn.dataset.title;
                 const creator = btn.dataset.creator;
                 await this.addArchiveTrackToLibrary(identifier, title, creator);
+            });
+        });
+        container.querySelectorAll('.archive-details-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const identifier = btn.dataset.identifier;
+                Router.navigate('track', `archive:${identifier}`);
             });
         });
     }
@@ -1577,69 +1676,56 @@ var UI = class UI {
         container.innerHTML = '<div>Радио запущено! Треки добавлены в очередь.</div>';
     }
 
-    async loadArchiveTrackDetail(identifier) {
-        const container = document.getElementById('archive-track-detail-container');
-        if (!container) return;
-        container.innerHTML = '<div>Загрузка информации...</div>';
-        const details = await ArchiveApi.getTrackDetails(identifier);
-        if (!details) {
-            container.innerHTML = '<div>Не удалось загрузить информацию о треке.</div>';
-            return;
+    async deleteTrack(trackId) {
+        const track = await this.db.getTrack(trackId);
+        if (!track) return;
+
+        // Подтверждение удаления
+        if (!confirm(`Удалить трек "${track.name}" из библиотеки?`)) return;
+
+        // 1. Удаляем из очереди, если там есть этот трек
+        const queueIndex = this.player.queue.findIndex(t => t.id === trackId);
+        if (queueIndex !== -1) {
+            await this.player.removeFromQueue(queueIndex);
         }
-        const track = {
-            name: `${details.title} - ${details.creator}`,
-            duration: details.duration,
-            streamUrl: details.streamUrl
-        };
-        container.innerHTML = `
-            <div class="track-detail">
-                <h3>${utils.escapeHtml(track.name)}</h3>
-                <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
-                <p><strong>Ссылка на прослушивание:</strong> <a href="${track.streamUrl}" target="_blank">${track.streamUrl}</a></p>
-                <div class="track-detail-actions">
-                    <button id="archive-track-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
-                    <button id="archive-track-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> Добавить в очередь</button>
-                    <button id="archive-track-add-to-library"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить в библиотеку</button>
-                </div>
-            </div>
-        `;
-        document.getElementById('archive-track-play-now').addEventListener('click', async () => {
-            const trackObj = {
-                id: null,
-                name: track.name,
-                duration: track.duration,
-                streamUrl: track.streamUrl,
-                source: 'archive',
-                archiveId: identifier
-            };
-            await this.player.playNow(trackObj);
-        });
-        document.getElementById('archive-track-add-to-queue').addEventListener('click', async () => {
-            const trackObj = {
-                id: null,
-                name: track.name,
-                duration: track.duration,
-                streamUrl: track.streamUrl,
-                source: 'archive',
-                archiveId: identifier
-            };
-            await this.player.addToQueue([trackObj]);
-        });
-        document.getElementById('archive-track-add-to-library').addEventListener('click', async () => {
-            const trackObj = {
-                id: utils.generateId(),
-                name: track.name,
-                duration: track.duration,
-                streamUrl: track.streamUrl,
-                source: 'archive',
-                archiveId: identifier
-            };
-            await this.db.addTrack(trackObj);
-            alert('Трек добавлен в библиотеку');
-        });
-        const backBtn = document.getElementById('back-to-archive');
-        if (backBtn) {
-            backBtn.onclick = () => Router.navigate('archive');
+
+        // 2. Удаляем из всех плейлистов
+        const playlists = await this.db.getAllPlaylists();
+        for (const playlist of playlists) {
+            const idx = playlist.tracks.indexOf(trackId);
+            if (idx !== -1) {
+                playlist.tracks.splice(idx, 1);
+                await this.db.updatePlaylist(playlist);
+            }
         }
+
+        // 3. Удаляем теги трека
+        await this.db.setTags(trackId, []);
+
+        // 4. Удаляем сам трек
+        await this.db.deleteTrack(trackId);
+
+        // 5. Если удалённый трек был текущим – останавливаем воспроизведение
+        if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
+            this.player.pause();
+            this.player.currentTrack = null;
+            this.player.currentIndex = -1;
+            if (this.player.ui) this.player.ui.updateCurrentTrack(null);
+        }
+
+        // 6. Перерисовываем интерфейс
+        await this.renderLibrary();
+        await this.renderPlaylists();
+        if (this.player.queue.length === 0) {
+            this.player.currentTrack = null;
+            if (this.player.ui) this.player.ui.updateCurrentTrack(null);
+        }
+
+        // Если мы находимся на странице деталей удалённого трека – возвращаемся в библиотеку
+        if (window.location.hash === `#track/${trackId}`) {
+            Router.navigate('library');
+        }
+
+        alert('Трек удалён из библиотеки');
     }
 };
