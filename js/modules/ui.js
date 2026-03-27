@@ -1133,7 +1133,7 @@ var UI = class UI {
                     <p><strong>Ссылка:</strong> <a href="${track.streamUrl}" target="_blank">${track.streamUrl}</a></p>
                     <div class="track-detail-actions">
                         <button id="detail-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
-                        <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
+                        <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
                         ${isInLibrary ? 
                             `<button id="detail-delete-from-library" class="delete-btn"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить из библиотеки</button>` :
                             `<button id="detail-add-to-library"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить в библиотеку</button>`
@@ -1233,7 +1233,7 @@ var UI = class UI {
                         <input type="text" id="detail-new-tag" placeholder="новый тег">
                         <button id="detail-toggle-exclude">${isExcluded ? '<svg class="icon"><use href="#icon-check"></use></svg> Вернуть в случайный выбор' : '<svg class="icon"><use href="#icon-ban"></use></svg> Исключить из случайного выбора'}</button>
                         <button id="detail-add-to-queue"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
-                        <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg> Воспроизвести сейчас</button>
+                        <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
                         <button id="detail-add-to-playlist"><svg class="icon"><use href="#icon-playlist"></use></svg> В плейлист</button>
                         <button id="detail-delete-from-library" class="delete-btn"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить из библиотеки</button>
                     </div>
