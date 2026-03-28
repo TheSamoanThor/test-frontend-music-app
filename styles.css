@@ -160,6 +160,39 @@ h2 {
     border-radius: var(--border-radius);
     cursor: pointer;
 }
+/* Подсветка текущего трека в очереди и плейлистах */
+.queue-item.current-track,
+.playlist-track-item.current-track {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: var(--border-radius);
+    transition: background-color 0.2s;
+}
+.queue-item.current-track button,
+.playlist-track-item.current-track button {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+.queue-item.current-track button:hover,
+.playlist-track-item.current-track button:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
+.queue-play-now {
+    background-color: var(--primary-color);
+    color: white;
+}
+.queue-play-now:hover {
+    filter: brightness(0.9);
+}
+.queue-item.current-track .queue-play-now {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+.queue-item.current-track .queue-play-now:hover {
+    background-color: white;
+    color: var(--primary-color);
+}
 .track-list, .queue-list, .excluded-list, .playlists-list {
     list-style: none;
     overflow-y: auto;
@@ -486,7 +519,7 @@ h2 {
 .player-bar {
     background-color: var(--player-bg);
     border-top: 1px solid var(--border-color);
-    padding: 1rem 2rem;
+    padding: 0.5rem 2rem 2rem;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
     cursor: pointer;
     color: var(--text-color);
@@ -1359,6 +1392,11 @@ input[type="checkbox"]:focus {
 }
 /* Эффект бегущей строки */
 .player-info {
+    max-width: 20%;
+    overflow: hidden;
+}
+
+#current-track-name {
     overflow: hidden;
     white-space: nowrap;
     display: flex;
@@ -1366,12 +1404,12 @@ input[type="checkbox"]:focus {
     gap: 0.3rem;
 }
 
-.player-info .marquee-text {
+#current-track-name .marquee-text {
     display: inline-block;
     padding-right: 1rem;
 }
 
-.player-info.marquee-animate .marquee-text {
+#current-track-name.marquee-animate .marquee-text {
     animation: marquee 12s linear infinite;
 }
 

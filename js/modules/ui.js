@@ -11,14 +11,15 @@ var UI = class UI {
         this.playerVisualizerCallback = null;
         this.trackProgressHandler = null;
         this.trackDetailVisualizerCallback = null;
+        this.playlistOpenState = {}; // Хранит состояние открытости плейлистов
 
         this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
 
         this.initEventListeners();
 
-        // window.addEventListener('resize', utils.debounce(() => {
-        //     this.applyMarqueeIfNeeded();
-        // }, 200));
+        window.addEventListener('resize', utils.debounce(() => {
+            this.applyMarqueeIfNeeded();
+        }, 200));
     }
 
     initEventListeners() {
@@ -115,14 +116,12 @@ var UI = class UI {
             });
         }
 
-        // Исправленный обработчик клика по панели плеера
         document.getElementById('player-bar').addEventListener('click', (e) => {
             if (e.target.closest('button') || e.target.closest('input')) return;
             if (this.player.currentTrack) {
                 if (this.player.currentTrack.id) {
                     Router.navigate('track', this.player.currentTrack.id);
                 } else if (this.player.currentTrack.archiveId) {
-                    // Для архивных треков передаём префикс archive:
                     Router.navigate('track', `archive:${this.player.currentTrack.archiveId}`);
                 }
             }
@@ -652,6 +651,8 @@ var UI = class UI {
                             playlist.tracks.push(trackId);
                             await this.db.updatePlaylist(playlist);
                             alert('Трек добавлен в плейлист');
+                            // Обновляем только этот плейлист, чтобы он не закрылся
+                            this.refreshPlaylist(playlist.id);
                         } else {
                             alert('Трек уже есть в плейлисте');
                         }
@@ -670,6 +671,13 @@ var UI = class UI {
     }
 
     attachQueueHandlers() {
+        document.querySelectorAll('.queue-play-now').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const index = parseInt(e.target.closest('button').dataset.index);
+                await this.player.playFromQueue(index);
+            });
+        });
+
         document.querySelectorAll('.queue-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const index = parseInt(e.target.closest('button').dataset.index);
@@ -718,9 +726,16 @@ var UI = class UI {
             const li = document.createElement('li');
             li.className = 'queue-item';
             li.dataset.id = track.id || `temp-${i}`;
+            const isCurrent = this.player.currentTrack && (
+                (track.id && this.player.currentTrack.id === track.id) ||
+                (track.archiveId && this.player.currentTrack.archiveId === track.archiveId)
+            );
+            if (isCurrent) li.classList.add('current-track');
+
             li.innerHTML = `
-                <span>${track.name}</span>
+                <span><strong>${i+1}.</strong> ${track.name}</span>
                 <div class="queue-controls">
+                    <button class="queue-play-now" data-index="${i}" title="Воспроизвести сейчас"><svg class="icon"><use href="#icon-play"></use></svg></button>
                     <button class="queue-up" data-index="${i}" ${i === 0 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-up"></use></svg></button>
                     <button class="queue-down" data-index="${i}" ${i === queue.length-1 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-down"></use></svg></button>
                     <button class="queue-remove" data-index="${i}"><svg class="icon"><use href="#icon-close"></use></svg></button>
@@ -736,8 +751,8 @@ var UI = class UI {
     updateCurrentTrack(track, pictureUrl) {
         const nameEl = document.getElementById('current-track-name');
         nameEl.innerHTML = track ? `<svg class="icon"><use href="#icon-note"></use></svg> ${track.name}` : '<svg class="icon"><use href="#icon-note"></use></svg> Не выбрано';
-        // Сбрасываем предыдущее состояние марафона
-        // this.resetMarquee();
+        nameEl.removeAttribute('data-original-html');
+        this.applyMarqueeIfNeeded();
 
         const coverImg = document.getElementById('current-track-cover');
         const visualizerCanvas = document.getElementById('player-visualizer');
@@ -792,7 +807,9 @@ var UI = class UI {
         } else {
             this.updateTrackPlaybackControls();
         }
-        // this.applyMarqueeIfNeeded();
+        // Обновляем очередь и плейлисты, чтобы выделить текущий трек
+        this.renderQueue(this.player.queue);
+        this.renderPlaylists(); // перерисовка плейлистов обновит выделение, но сохранит открытость
     }
 
     setPlayPauseIcon(playing) {
@@ -1107,7 +1124,6 @@ var UI = class UI {
         const identifier = isArchive ? param.substring(8) : param;
 
         if (isArchive) {
-            // === Загрузка трека из Internet Archive ===
             const details = await ArchiveApi.getTrackDetails(identifier);
             if (!details) {
                 Router.navigate('archive');
@@ -1122,7 +1138,6 @@ var UI = class UI {
                 archiveId: identifier
             };
 
-            // Проверяем, добавлен ли уже этот трек в библиотеку
             const existingTracks = await this.db.getAllTracks();
             const existing = existingTracks.find(t => t.archiveId === identifier);
             const isInLibrary = !!existing;
@@ -1149,7 +1164,6 @@ var UI = class UI {
                 </div>
             `;
 
-            // Обработчики
             document.getElementById('detail-add-to-queue').addEventListener('click', async () => {
                 const trackObj = { ...track, id: null };
                 await this.player.addToQueue([trackObj]);
@@ -1164,7 +1178,6 @@ var UI = class UI {
                 if (deleteBtn) {
                     deleteBtn.addEventListener('click', async () => {
                         await this.deleteTrack(existing.id);
-                        // После удаления перенаправляем на страницу архива
                         Router.navigate('archive');
                     });
                 }
@@ -1175,7 +1188,6 @@ var UI = class UI {
                         const trackObj = { ...track, id: utils.generateId() };
                         await this.db.addTrack(trackObj);
                         alert('Трек добавлен в библиотеку');
-                        // Обновляем страницу, чтобы кнопка "Добавить" сменилась на "Удалить"
                         this.loadTrackDetail(`archive:${identifier}`);
                     });
                 }
@@ -1187,7 +1199,6 @@ var UI = class UI {
                 this.unregisterTrackDetailVisualizer();
             }
         } else {
-            // === Загрузка локального трека ===
             const track = await this.db.getTrack(identifier);
             if (!track) {
                 Router.navigate('library');
@@ -1348,6 +1359,7 @@ var UI = class UI {
                             playlist.tracks.push(track.id);
                             await this.db.updatePlaylist(playlist);
                             alert('Трек добавлен в плейлист');
+                            this.refreshPlaylist(playlist.id);
                         } else {
                             alert('Трек уже есть в плейлисте');
                         }
@@ -1355,7 +1367,6 @@ var UI = class UI {
                 }
             });
 
-            // Обработчик удаления для локального трека
             document.getElementById('detail-delete-from-library').addEventListener('click', async () => {
                 await this.deleteTrack(track.id);
                 Router.navigate('library');
@@ -1369,6 +1380,20 @@ var UI = class UI {
         const container = document.getElementById('playlists-list');
         if (!container) return;
         const playlists = await this.db.getAllPlaylists();
+
+        // Сохраняем текущие состояния открытости перед перерисовкой
+        const currentStates = {};
+        document.querySelectorAll('.playlist-item').forEach(item => {
+            const id = item.querySelector('.playlist-load')?.dataset.id;
+            if (id) {
+                const tracksDiv = item.querySelector(`#playlist-tracks-${id}`);
+                if (tracksDiv) {
+                    currentStates[id] = tracksDiv.style.display !== 'none';
+                }
+            }
+        });
+        Object.assign(this.playlistOpenState, currentStates);
+
         container.innerHTML = '';
         for (let pl of playlists) {
             const plDiv = document.createElement('div');
@@ -1381,20 +1406,26 @@ var UI = class UI {
                         <button class="playlist-delete" data-id="${pl.id}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить</button>
                     </div>
                 </div>
-                <div class="playlist-tracks" id="playlist-tracks-${pl.id}" style="display: none;"></div>
+                <div class="playlist-tracks" id="playlist-tracks-${pl.id}" style="${this.playlistOpenState[pl.id] ? 'display:block;' : 'display:none;'}"></div>
             `;
+            container.appendChild(plDiv);
+
+            // Обработчик клика на заголовке
             plDiv.querySelector('.playlist-header').addEventListener('click', async (e) => {
                 if (e.target.closest('button')) return;
                 const tracksDiv = plDiv.querySelector('.playlist-tracks');
-                if (tracksDiv.style.display === 'none') {
+                const isVisible = tracksDiv.style.display !== 'none';
+                if (isVisible) {
+                    tracksDiv.style.display = 'none';
+                    this.playlistOpenState[pl.id] = false;
+                } else {
                     tracksDiv.style.display = 'block';
                     await this.renderPlaylistTracks(pl.id, tracksDiv);
-                } else {
-                    tracksDiv.style.display = 'none';
+                    this.playlistOpenState[pl.id] = true;
                 }
             });
-            container.appendChild(plDiv);
 
+            // Кнопка загрузки в очередь
             plDiv.querySelector('.playlist-load').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const id = e.target.closest('button').dataset.id;
@@ -1404,15 +1435,29 @@ var UI = class UI {
                 }
             });
 
+            // Кнопка удаления плейлиста
             plDiv.querySelector('.playlist-delete').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const id = e.target.closest('button').dataset.id;
                 if (confirm('Удалить плейлист?')) {
                     await this.db.deletePlaylist(id);
+                    delete this.playlistOpenState[id];
                     this.renderPlaylists();
                 }
             });
+
+            // Если плейлист был открыт до перерисовки, сразу загружаем треки
+            if (this.playlistOpenState[pl.id]) {
+                const tracksDiv = plDiv.querySelector('.playlist-tracks');
+                await this.renderPlaylistTracks(pl.id, tracksDiv);
+            }
         }
+    }
+
+    async refreshPlaylist(playlistId) {
+        const container = document.getElementById(`playlist-tracks-${playlistId}`);
+        if (!container) return;
+        await this.renderPlaylistTracks(playlistId, container);
     }
 
     async renderPlaylistTracks(playlistId, container) {
@@ -1425,8 +1470,11 @@ var UI = class UI {
             if (!track) continue;
             const trackDiv = document.createElement('div');
             trackDiv.className = 'playlist-track-item';
+            // Выделяем текущий трек
+            const isCurrent = this.player.currentTrack && this.player.currentTrack.id === track.id;
+            if (isCurrent) trackDiv.classList.add('current-track');
             trackDiv.innerHTML = `
-                <span>${track.name}</span>
+                <span><strong>${i+1}.</strong> ${track.name}</span>
                 <div class="playlist-track-controls">
                     <button class="playlist-track-up" data-playlist="${playlistId}" data-index="${i}" ${i === 0 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-up"></use></svg></button>
                     <button class="playlist-track-down" data-playlist="${playlistId}" data-index="${i}" ${i === playlist.tracks.length-1 ? 'disabled' : ''}><svg class="icon"><use href="#icon-arrow-down"></use></svg></button>
@@ -1436,6 +1484,7 @@ var UI = class UI {
             container.appendChild(trackDiv);
         }
 
+        // Обработчики кнопок внутри плейлиста
         container.querySelectorAll('.playlist-track-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -1445,7 +1494,7 @@ var UI = class UI {
                     const playlist = await this.db.getPlaylist(playlistId);
                     [playlist.tracks[index-1], playlist.tracks[index]] = [playlist.tracks[index], playlist.tracks[index-1]];
                     await this.db.updatePlaylist(playlist);
-                    this.renderPlaylists();
+                    this.refreshPlaylist(playlistId);
                 }
             });
         });
@@ -1459,7 +1508,7 @@ var UI = class UI {
                 if (index < playlist.tracks.length - 1) {
                     [playlist.tracks[index], playlist.tracks[index+1]] = [playlist.tracks[index+1], playlist.tracks[index]];
                     await this.db.updatePlaylist(playlist);
-                    this.renderPlaylists();
+                    this.refreshPlaylist(playlistId);
                 }
             });
         });
@@ -1472,7 +1521,7 @@ var UI = class UI {
                 const playlist = await this.db.getPlaylist(playlistId);
                 playlist.tracks.splice(index, 1);
                 await this.db.updatePlaylist(playlist);
-                this.renderPlaylists();
+                this.refreshPlaylist(playlistId);
             });
         });
     }
@@ -1505,44 +1554,73 @@ var UI = class UI {
         }
     }
 
-    resetMarquee() {
-        const el = document.querySelector('.player-info');
-        if (!el) return;
-        if (el.classList.contains('marquee-ready')) {
-            const originalText = el.getAttribute('data-original-text');
-            if (originalText) {
-                el.innerHTML = originalText;
-            }
-            el.classList.remove('marquee-ready', 'marquee-animate');
-            el.removeAttribute('data-original-text');
-        }
-    }
-
     applyMarqueeIfNeeded() {
-        const el = document.querySelector('.player-info');
+        const el = document.getElementById('current-track-name');
         if (!el) return;
 
-        let originalText = el.getAttribute('data-original-text');
-        if (!originalText) {
-            originalText = el.innerText.trim();
-            el.setAttribute('data-original-text', originalText);
+        let originalHtml = el.getAttribute('data-original-html');
+        if (!originalHtml) {
+            originalHtml = el.innerHTML;
+            el.setAttribute('data-original-html', originalHtml);
         }
 
-        const needsMarquee = el.scrollWidth > el.clientWidth;
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.visibility = 'hidden';
+        tempDiv.style.whiteSpace = 'nowrap';
+        const styles = getComputedStyle(el);
+        tempDiv.style.font = styles.font;
+        tempDiv.style.fontSize = styles.fontSize;
+        tempDiv.style.fontFamily = styles.fontFamily;
+        tempDiv.style.fontWeight = styles.fontWeight;
+        tempDiv.style.letterSpacing = styles.letterSpacing;
+        tempDiv.innerHTML = originalHtml;
+        document.body.appendChild(tempDiv);
+        const fullWidth = tempDiv.offsetWidth;
+        document.body.removeChild(tempDiv);
+
+        const containerWidth = el.parentElement ? el.parentElement.clientWidth : el.clientWidth;
+
+        const needsMarquee = fullWidth > containerWidth;
 
         if (needsMarquee && !el.classList.contains('marquee-ready')) {
-            el.innerHTML = `<span class="marquee-text">${originalText}</span><span class="marquee-text">${originalText}</span>`;
+            const tempDiv2 = document.createElement('div');
+            tempDiv2.innerHTML = originalHtml;
+            const originalIcon = tempDiv2.querySelector('.icon');
+            let clonedIcon = null;
+            if (originalIcon) {
+                clonedIcon = originalIcon.cloneNode(true);
+            }
+            let text = '';
+            for (let node of tempDiv2.childNodes) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    text += node.textContent;
+                } else if (node !== originalIcon && node.nodeType === Node.ELEMENT_NODE) {
+                    text += node.textContent;
+                }
+            }
+            text = text.trim();
+
+            el.innerHTML = '';
+            if (clonedIcon) el.appendChild(clonedIcon);
+            const span1 = document.createElement('span');
+            span1.className = 'marquee-text';
+            span1.textContent = text;
+            const span2 = document.createElement('span');
+            span2.className = 'marquee-text';
+            span2.textContent = text;
+            el.appendChild(span1);
+            el.appendChild(span2);
             el.classList.add('marquee-ready');
             setTimeout(() => {
                 el.classList.add('marquee-animate');
             }, 10);
         } else if (!needsMarquee && el.classList.contains('marquee-ready')) {
+            el.innerHTML = originalHtml;
             el.classList.remove('marquee-ready', 'marquee-animate');
-            el.innerHTML = originalText;
         }
     }
 
-    // ==================== Internet Archive integration ====================
     async renderArchivePage() {
         const container = document.getElementById('archive-results');
         container.innerHTML = '<div>Введите запрос для поиска музыки в Internet Archive.</div>';
@@ -1724,32 +1802,26 @@ var UI = class UI {
         const track = await this.db.getTrack(trackId);
         if (!track) return;
 
-        // Подтверждение удаления
         if (!confirm(`Удалить трек "${track.name}" из библиотеки?`)) return;
 
-        // 1. Удаляем из очереди, если там есть этот трек
         const queueIndex = this.player.queue.findIndex(t => t.id === trackId);
         if (queueIndex !== -1) {
             await this.player.removeFromQueue(queueIndex);
         }
 
-        // 2. Удаляем из всех плейлистов
         const playlists = await this.db.getAllPlaylists();
         for (const playlist of playlists) {
             const idx = playlist.tracks.indexOf(trackId);
             if (idx !== -1) {
                 playlist.tracks.splice(idx, 1);
                 await this.db.updatePlaylist(playlist);
+                this.refreshPlaylist(playlist.id);
             }
         }
 
-        // 3. Удаляем теги трека
         await this.db.setTags(trackId, []);
-
-        // 4. Удаляем сам трек
         await this.db.deleteTrack(trackId);
 
-        // 5. Если удалённый трек был текущим – останавливаем воспроизведение
         if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
             this.player.pause();
             this.player.currentTrack = null;
@@ -1757,15 +1829,12 @@ var UI = class UI {
             if (this.player.ui) this.player.ui.updateCurrentTrack(null);
         }
 
-        // 6. Перерисовываем интерфейс
         await this.renderLibrary();
-        await this.renderPlaylists();
         if (this.player.queue.length === 0) {
             this.player.currentTrack = null;
             if (this.player.ui) this.player.ui.updateCurrentTrack(null);
         }
 
-        // Если мы находимся на странице деталей удалённого трека – возвращаемся в библиотеку
         if (window.location.hash === `#track/${trackId}`) {
             Router.navigate('library');
         }

@@ -85,95 +85,91 @@ var Player = class Player {
     async loadTrack(track) {
         if (!track) return false;
 
-        if (track.streamUrl) {
+        try {
+            if (track.streamUrl) {
+                if (this.currentObjectUrl) {
+                    URL.revokeObjectURL(this.currentObjectUrl);
+                    this.currentObjectUrl = null;
+                }
+                this.currentTrack = track;
+                this.audio.src = track.streamUrl;
+                return new Promise((resolve) => {
+                    let resolved = false;
+                    let timeoutId = setTimeout(() => {
+                        if (!resolved) {
+                            resolved = true;
+                            cleanup();
+                            console.error(`Timeout loading stream for ${track.name}`);
+                            resolve(false);
+                        }
+                    }, 30000);
+
+                    const onCanPlay = () => {
+                        if (resolved) return;
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        cleanup();
+                        this.updateEffectiveVolume().then(() => {
+                            if (this.isPlaying) {
+                                this.audio.play().catch(e => console.warn('Auto-play failed', e));
+                            }
+                            if (this.ui) this.ui.updateCurrentTrack(track, null);
+                            resolve(true);
+                        }).catch(() => resolve(false));
+                    };
+                    const onError = () => {
+                        if (resolved) return;
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        cleanup();
+                        console.error(`Failed to load stream for ${track.name}`);
+                        resolve(false);
+                    };
+                    const cleanup = () => {
+                        this.audio.removeEventListener('canplaythrough', onCanPlay);
+                        this.audio.removeEventListener('error', onError);
+                    };
+                    this.audio.addEventListener('canplaythrough', onCanPlay);
+                    this.audio.addEventListener('error', onError);
+                    this.audio.load();
+                });
+            }
+
             if (this.currentObjectUrl) {
                 URL.revokeObjectURL(this.currentObjectUrl);
                 this.currentObjectUrl = null;
             }
-            this.currentTrack = track;
-            this.audio.src = track.streamUrl;
-            return new Promise((resolve) => {
-                let resolved = false;
-                let timeoutId = setTimeout(() => {
-                    if (!resolved) {
-                        resolved = true;
-                        cleanup();
-                        console.error(`Timeout loading stream for ${track.name}`);
-                        resolve(false);
-                    }
-                }, 30000);
 
-                const onCanPlay = () => {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timeoutId);
-                    cleanup();
-                    this.updateEffectiveVolume().then(() => {
-                        if (this.isPlaying) {
-                            this.audio.play().catch(e => console.warn('Auto-play failed', e));
-                        }
-                        if (this.ui) this.ui.updateCurrentTrack(track, null);
-                        resolve(true);
-                    }).catch(() => resolve(false));
-                };
-                const onError = () => {
-                    if (resolved) return;
-                    resolved = true;
-                    clearTimeout(timeoutId);
-                    cleanup();
-                    console.error(`Failed to load stream for ${track.name}`);
-                    const index = this.queue.findIndex(t => t.id === track.id && t.streamUrl === track.streamUrl);
-                    if (index !== -1) {
-                        this.removeFromQueue(index).then(() => resolve(false));
-                    } else {
-                        resolve(false);
-                    }
-                };
-                const cleanup = () => {
-                    this.audio.removeEventListener('canplaythrough', onCanPlay);
-                    this.audio.removeEventListener('error', onError);
-                };
-                this.audio.addEventListener('canplaythrough', onCanPlay);
-                this.audio.addEventListener('error', onError);
-                this.audio.load();
-            });
-        }
-
-        if (this.currentObjectUrl) {
-            URL.revokeObjectURL(this.currentObjectUrl);
-            this.currentObjectUrl = null;
-        }
-
-        const file = await this.fileHandler.getFileForTrack(track);
-        if (!file) {
-            console.warn(`File not accessible for track: ${track.name}`);
-            const index = this.queue.findIndex(t => t.id === track.id);
-            if (index !== -1) {
-                await this.removeFromQueue(index);
+            const file = await this.fileHandler.getFileForTrack(track);
+            if (!file) {
+                console.warn(`File not accessible for track: ${track.name}`);
+                return false;
             }
+
+            this.currentTrack = track;
+            const url = URL.createObjectURL(file);
+            this.currentObjectUrl = url;
+            this.audio.src = url;
+            this.audio.load();
+
+            await this.updateEffectiveVolume();
+
+            if (this.isPlaying) {
+                try {
+                    await this.audio.play();
+                } catch (e) {
+                    console.warn('Auto-play failed', e);
+                }
+            }
+
+            const pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
+            if (this.ui) this.ui.updateCurrentTrack(track, pictureUrl);
+
+            return true;
+        } catch (err) {
+            console.error('Error loading track', err);
             return false;
         }
-
-        this.currentTrack = track;
-        const url = URL.createObjectURL(file);
-        this.currentObjectUrl = url;
-        this.audio.src = url;
-        this.audio.load();
-
-        await this.updateEffectiveVolume();
-
-        if (this.isPlaying) {
-            try {
-                await this.audio.play();
-            } catch (e) {
-                console.warn('Auto-play failed', e);
-            }
-        }
-
-        const pictureUrl = await this.fileHandler.getPictureBlobUrl(file);
-        if (this.ui) this.ui.updateCurrentTrack(track, pictureUrl);
-
-        return true;
     }
 
     async updateEffectiveVolume() {
@@ -226,11 +222,8 @@ var Player = class Player {
 
     async next(autoplay = false) {
         if (this.queue.length === 0) return;
-
         let attempts = 0;
-        const maxAttempts = this.queue.length;
-
-        while (attempts < maxAttempts) {
+        while (this.queue.length > 0 && attempts < this.queue.length) {
             const nextIndex = (this.currentIndex + 1) % this.queue.length;
             const nextTrack = this.queue[nextIndex];
             const success = await this.loadTrack(nextTrack);
@@ -247,7 +240,6 @@ var Player = class Player {
                 attempts++;
             }
         }
-
         console.error('Все треки в очереди недоступны');
         this.pause();
         if (this.ui) {
@@ -257,11 +249,8 @@ var Player = class Player {
 
     async prev(autoplay = false) {
         if (this.queue.length === 0) return;
-
         let attempts = 0;
-        const maxAttempts = this.queue.length;
-
-        while (attempts < maxAttempts) {
+        while (this.queue.length > 0 && attempts < this.queue.length) {
             const prevIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
             const prevTrack = this.queue[prevIndex];
             const success = await this.loadTrack(prevTrack);
@@ -278,7 +267,6 @@ var Player = class Player {
                 attempts++;
             }
         }
-
         console.error('Все треки в очереди недоступны');
         this.pause();
         if (this.ui) {
@@ -531,5 +519,23 @@ var Player = class Player {
         await this.db.setSetting('visualizer_bar_sym_x', this.visualizerBarSymX);
         await this.db.setSetting('visualizer_bar_sym_y', this.visualizerBarSymY);
         await this.db.setSetting('visualizer_wave_sym_x', this.visualizerWaveSymX);
+    }
+
+    async playFromQueue(index) {
+        if (index < 0 || index >= this.queue.length) return;
+        const track = this.queue[index];
+        if (!track) return;
+        this.currentIndex = index;
+        const success = await this.loadTrack(track);
+        if (success) {
+            this.play();
+        } else {
+            // Если трек недоступен, удаляем его из очереди
+            await this.removeFromQueue(index);
+            if (this.queue.length > 0 && this.currentIndex >= this.queue.length) {
+                this.currentIndex = 0;
+                await this.loadTrack(this.queue[0]);
+            }
+        }
     }
 };
