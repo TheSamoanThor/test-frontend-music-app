@@ -15,6 +15,10 @@ var UI = class UI {
         this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
 
         this.initEventListeners();
+
+        // window.addEventListener('resize', utils.debounce(() => {
+        //     this.applyMarqueeIfNeeded();
+        // }, 200));
     }
 
     initEventListeners() {
@@ -732,6 +736,8 @@ var UI = class UI {
     updateCurrentTrack(track, pictureUrl) {
         const nameEl = document.getElementById('current-track-name');
         nameEl.innerHTML = track ? `<svg class="icon"><use href="#icon-note"></use></svg> ${track.name}` : '<svg class="icon"><use href="#icon-note"></use></svg> Не выбрано';
+        // Сбрасываем предыдущее состояние марафона
+        // this.resetMarquee();
 
         const coverImg = document.getElementById('current-track-cover');
         const visualizerCanvas = document.getElementById('player-visualizer');
@@ -786,6 +792,7 @@ var UI = class UI {
         } else {
             this.updateTrackPlaybackControls();
         }
+        // this.applyMarqueeIfNeeded();
     }
 
     setPlayPauseIcon(playing) {
@@ -1495,6 +1502,43 @@ var UI = class UI {
         if (popupVolume) {
             popupVolume.value = percent;
             if (window.updateRangeFill) window.updateRangeFill(popupVolume);
+        }
+    }
+
+    resetMarquee() {
+        const el = document.querySelector('.player-info');
+        if (!el) return;
+        if (el.classList.contains('marquee-ready')) {
+            const originalText = el.getAttribute('data-original-text');
+            if (originalText) {
+                el.innerHTML = originalText;
+            }
+            el.classList.remove('marquee-ready', 'marquee-animate');
+            el.removeAttribute('data-original-text');
+        }
+    }
+
+    applyMarqueeIfNeeded() {
+        const el = document.querySelector('.player-info');
+        if (!el) return;
+
+        let originalText = el.getAttribute('data-original-text');
+        if (!originalText) {
+            originalText = el.innerText.trim();
+            el.setAttribute('data-original-text', originalText);
+        }
+
+        const needsMarquee = el.scrollWidth > el.clientWidth;
+
+        if (needsMarquee && !el.classList.contains('marquee-ready')) {
+            el.innerHTML = `<span class="marquee-text">${originalText}</span><span class="marquee-text">${originalText}</span>`;
+            el.classList.add('marquee-ready');
+            setTimeout(() => {
+                el.classList.add('marquee-animate');
+            }, 10);
+        } else if (!needsMarquee && el.classList.contains('marquee-ready')) {
+            el.classList.remove('marquee-ready', 'marquee-animate');
+            el.innerHTML = originalText;
         }
     }
 
