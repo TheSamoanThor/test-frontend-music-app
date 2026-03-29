@@ -30,6 +30,8 @@ var Player = class Player {
         this.visualizerBarSymY = false;
         this.visualizerWaveSymX = false;
 
+        this.repeatMode = 0; // 0 - off, 1 - repeat one, 2 - repeat queue
+
         this.initAudioEvents();
     }
 
@@ -45,7 +47,17 @@ var Player = class Player {
             }
         });
 
-        this.audio.addEventListener('ended', () => this.next(true));
+        this.audio.addEventListener('ended', () => {
+            if (this.repeatMode === 1) {
+                this.audio.currentTime = 0;
+                this.play();
+            } else if (this.repeatMode === 2) {
+                this.next(true);
+            } else {
+                this.next(true);
+            }
+        });
+
         this.audio.addEventListener('error', (e) => {
             console.error('Audio error', e);
             this.next(true);
@@ -354,7 +366,7 @@ var Player = class Player {
             }
         }
         if (availableTracks.length === 0) {
-            alert('Нет доступных треков (все исключены)');
+            if (this.ui) this.ui.showToast('Нет доступных треков (все исключены)', 'error');
             return;
         }
 
@@ -395,6 +407,12 @@ var Player = class Player {
         }
     }
 
+    skip(seconds) {
+        if (this.audio.duration) {
+            this.audio.currentTime = Math.min(this.audio.duration, Math.max(0, this.audio.currentTime + seconds));
+        }
+    }
+
     async playNow(track) {
         if (typeof track === 'string') {
             track = await this.db.getTrack(track);
@@ -419,13 +437,30 @@ var Player = class Player {
         if (success) {
             this.play();
         } else {
-            alert('Не удалось воспроизвести трек. Возможно, файл недоступен.');
+            if (this.ui) this.ui.showToast('Не удалось воспроизвести трек. Возможно, файл недоступен.', 'error');
             this.queue.splice(currentIndex, 1);
             if (this.queue.length === 0) {
                 this.currentTrack = null;
                 if (this.ui) this.ui.updateCurrentTrack(null);
             } else {
                 await this.loadTrack(this.queue[this.currentIndex]);
+            }
+        }
+    }
+
+    async playFromQueue(index) {
+        if (index < 0 || index >= this.queue.length) return;
+        const track = this.queue[index];
+        if (!track) return;
+        this.currentIndex = index;
+        const success = await this.loadTrack(track);
+        if (success) {
+            this.play();
+        } else {
+            await this.removeFromQueue(index);
+            if (this.queue.length > 0 && this.currentIndex >= this.queue.length) {
+                this.currentIndex = 0;
+                await this.loadTrack(this.queue[0]);
             }
         }
     }
@@ -438,6 +473,17 @@ var Player = class Player {
     addStreamTracks(tracks) {
         this.queue.push(...tracks);
         if (this.ui) this.ui.renderQueue(this.queue);
+    }
+
+    toggleRepeat() {
+        this.repeatMode = (this.repeatMode + 1) % 3;
+        if (this.ui) this.ui.updateRepeatButton(this.repeatMode);
+        this.db.setSetting('repeat_mode', this.repeatMode);
+    }
+
+    async loadRepeatMode() {
+        this.repeatMode = await this.db.getSetting('repeat_mode') || 0;
+        if (this.ui) this.ui.updateRepeatButton(this.repeatMode);
     }
 
     initAudioContext() {
@@ -519,23 +565,5 @@ var Player = class Player {
         await this.db.setSetting('visualizer_bar_sym_x', this.visualizerBarSymX);
         await this.db.setSetting('visualizer_bar_sym_y', this.visualizerBarSymY);
         await this.db.setSetting('visualizer_wave_sym_x', this.visualizerWaveSymX);
-    }
-
-    async playFromQueue(index) {
-        if (index < 0 || index >= this.queue.length) return;
-        const track = this.queue[index];
-        if (!track) return;
-        this.currentIndex = index;
-        const success = await this.loadTrack(track);
-        if (success) {
-            this.play();
-        } else {
-            // Если трек недоступен, удаляем его из очереди
-            await this.removeFromQueue(index);
-            if (this.queue.length > 0 && this.currentIndex >= this.queue.length) {
-                this.currentIndex = 0;
-                await this.loadTrack(this.queue[0]);
-            }
-        }
     }
 };

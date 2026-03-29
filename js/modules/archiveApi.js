@@ -25,9 +25,9 @@ var ArchiveApi = {
         } catch (err) {
             console.error('Archive.org search error', err);
             if (err.name === 'AbortError') {
-                alert('Превышено время ожидания ответа от archive.org');
+                Modal.alert('Превышено время ожидания ответа от archive.org', 'Ошибка');
             } else {
-                alert('Ошибка соединения с archive.org');
+                Modal.alert('Ошибка соединения с archive.org', 'Ошибка');
             }
             return [];
         }

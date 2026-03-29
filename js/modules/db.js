@@ -235,12 +235,21 @@ var Database = class Database {
         if (!playlist.id) {
             playlist.id = utils.generateId();
         }
+        console.log('Сохранение плейлиста:', playlist);
+        
         const tx = this.db.transaction(this.stores.playlists, 'readwrite');
         const store = tx.objectStore(this.stores.playlists);
+        
         return new Promise((resolve, reject) => {
             const request = store.put(playlist);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(playlist.id);
+            request.onerror = () => {
+                console.error('Ошибка IndexedDB:', request.error);
+                reject(request.error);
+            };
+            request.onsuccess = () => {
+                console.log('Плейлист сохранён, ID:', playlist.id);
+                resolve(playlist.id);
+            };
         });
     }
 
@@ -249,12 +258,19 @@ var Database = class Database {
     }
 
     async deletePlaylist(id) {
+        console.log('Удаление плейлиста с ID:', id);
         const tx = this.db.transaction(this.stores.playlists, 'readwrite');
         const store = tx.objectStore(this.stores.playlists);
         return new Promise((resolve, reject) => {
             const request = store.delete(id);
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve();
+            request.onerror = () => {
+                console.error('Ошибка удаления плейлиста:', request.error);
+                reject(request.error);
+            };
+            request.onsuccess = () => {
+                console.log('Плейлист удалён, ID:', id);
+                resolve();
+            };
         });
     }
 

@@ -55,9 +55,36 @@ var UI = class UI {
             }, 300));
         }
 
-        document.getElementById('play-pause').addEventListener('click', () => this.player.togglePlay());
-        document.getElementById('prev').addEventListener('click', () => this.player.prev());
-        document.getElementById('next').addEventListener('click', () => this.player.next());
+        // Кнопки управления плеером
+        document.getElementById('play-pause').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.player.togglePlay();
+        });
+
+        document.getElementById('prev').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.player.prev();
+        });
+
+        document.getElementById('next').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.player.next();
+        });
+
+        document.getElementById('skip-back-10').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.player.skip(-10);
+        });
+
+        document.getElementById('skip-forward-10').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.player.skip(10);
+        });
+
+        document.getElementById('repeat-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.player.toggleRepeat();
+        });
         document.getElementById('volume').addEventListener('input', (e) => this.player.setVolume(e.target.value));
         document.getElementById('progress').addEventListener('input', (e) => this.player.seek(e.target.value));
 
@@ -65,6 +92,7 @@ var UI = class UI {
         document.getElementById('clear-queue').addEventListener('click', () => this.player.clearQueue());
         document.getElementById('add-random').addEventListener('click', () => this.player.addRandomFromLibrary());
         document.getElementById('add-random-10').addEventListener('click', () => this.player.addRandomTracks(10));
+        document.getElementById('save-queue-as-playlist')?.addEventListener('click', () => this.saveQueueAsPlaylist());
 
         document.addEventListener('click', async (e) => {
             if (e.target.classList.contains('remove-tag-btn') || e.target.closest('.remove-tag-btn')) {
@@ -158,21 +186,31 @@ var UI = class UI {
 
     async handleFileAccessLost(track) {
         if (track === null) {
-            if (confirm('Не удалось получить доступ к папке. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)')) {
+            const ok = await Modal.confirm(
+                'Не удалось получить доступ к папке. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)',
+                'Доступ к папке потерян'
+            );
+            if (ok) {
                 await this.switchToFilePickerMode();
             }
         } else {
-            if (confirm(`Доступ к файлу "${track.name}" потерян. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)`)) {
+            const ok = await Modal.confirm(
+                `Доступ к файлу "${track.name}" потерян. Хотите переключиться на выбор отдельных файлов? (Текущая библиотека будет очищена)`,
+                'Доступ к файлу потерян'
+            );
+            if (ok) {
                 await this.switchToFilePickerMode();
-            } else {
             }
         }
     }
 
     async switchToFilePickerMode() {
-        if (!confirm('Переключение в режим выбора файлов очистит всю текущую библиотеку и настройки треков. Продолжить?')) {
-            return;
-        }
+        const ok = await Modal.confirm(
+            'Переключение в режим выбора файлов очистит всю текущую библиотеку и настройки треков. Продолжить?',
+            'Подтверждение'
+        );
+        if (!ok) return;
+
         await this.db.clearAllData();
         await this.player.clearQueue();
         this.fileHandler.setFallbackMode(true);
@@ -183,12 +221,15 @@ var UI = class UI {
 
     async switchToFolderPickerMode() {
         if (!this.fileHandler.isFileSystemAccessSupported) {
-            alert('Ваш браузер не поддерживает выбор папки.');
+            Modal.alert('Ваш браузер не поддерживает выбор папки.', 'Ошибка');
             return;
         }
-        if (!confirm('Переключение в режим выбора папки очистит всю текущую библиотеку и настройки треков. Продолжить?')) {
-            return;
-        }
+        const ok = await Modal.confirm(
+            'Переключение в режим выбора папки очистит всю текущую библиотеку и настройки треков. Продолжить?',
+            'Подтверждение'
+        );
+        if (!ok) return;
+
         await this.db.clearAllData();
         await this.player.clearQueue();
         this.fileHandler.setFallbackMode(false);
@@ -516,7 +557,7 @@ var UI = class UI {
 
     async renderLibrary() {
         this.syncFilterInput();
-
+        this.showSkeleton('track-list', 10);
         const allTracks = await this.db.getAllTracks();
         let filtered = allTracks;
 
@@ -571,26 +612,35 @@ var UI = class UI {
             listEl.appendChild(li);
         }
 
+        // Обработчик добавления тега (с использованием Modal.prompt)
         document.querySelectorAll('.add-tag-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.closest('button').dataset.id;
-                const input = e.target.closest('div').querySelector('.tag-input');
-                const newTag = input.value.trim();
-                if (newTag) {
+                const id = btn.dataset.id;
+                const newTag = await Modal.prompt(
+                    'Введите новый тег:',
+                    '',
+                    'рок, джаз, инструментал...',
+                    'Добавление тега'
+                );
+                if (newTag && newTag.trim()) {
                     const currentTags = await this.db.getTags(id);
-                    if (!currentTags.includes(newTag)) {
-                        currentTags.push(newTag);
+                    const trimmed = newTag.trim();
+                    if (!currentTags.includes(trimmed)) {
+                        currentTags.push(trimmed);
                         await this.db.setTags(id, currentTags);
                         this.renderLibrary();
                         if (this.player.currentTrack && this.player.currentTrack.id === id) {
                             await this.player.updateEffectiveVolume();
                         }
+                    } else {
+                        Modal.alert('Такой тег уже есть у трека', 'Внимание');
                     }
                 }
             });
         });
 
+        // Обработчик исключения/включения
         document.querySelectorAll('.exclude-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -611,6 +661,7 @@ var UI = class UI {
             });
         });
 
+        // Обработчик "В очередь"
         document.querySelectorAll('.play-now-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -624,6 +675,7 @@ var UI = class UI {
             });
         });
 
+        // Обработчик "Воспроизвести сейчас"
         document.querySelectorAll('.play-immediate-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -632,35 +684,33 @@ var UI = class UI {
             });
         });
 
+        // Обработчик добавления в плейлист (с выбором из списка)
         document.querySelectorAll('.add-to-playlist-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const trackId = e.target.closest('button').dataset.id;
+                const trackId = btn.dataset.id;
                 const playlists = await this.db.getAllPlaylists();
                 if (playlists.length === 0) {
-                    alert('Сначала создайте плейлист');
+                    Modal.alert('Сначала создайте плейлист', 'Нет плейлистов');
                     return;
                 }
-                const listStr = playlists.map((p, i) => `${i+1}: ${p.name}`).join('\n');
-                const choice = prompt(`Выберите плейлист (введите номер):\n${listStr}`);
-                if (choice) {
-                    const index = parseInt(choice) - 1;
-                    if (index >= 0 && index < playlists.length) {
-                        const playlist = playlists[index];
-                        if (!playlist.tracks.includes(trackId)) {
-                            playlist.tracks.push(trackId);
-                            await this.db.updatePlaylist(playlist);
-                            alert('Трек добавлен в плейлист');
-                            // Обновляем только этот плейлист, чтобы он не закрылся
-                            this.refreshPlaylist(playlist.id);
-                        } else {
-                            alert('Трек уже есть в плейлисте');
-                        }
+                const items = playlists.map(p => ({ label: p.name, value: p.id }));
+                const selectedId = await Modal.select(items, 'Выберите плейлист');
+                if (selectedId) {
+                    const playlist = playlists.find(p => p.id === selectedId);
+                    if (!playlist.tracks.includes(trackId)) {
+                        playlist.tracks.push(trackId);
+                        await this.db.updatePlaylist(playlist);
+                        this.showToast('Трек добавлен в плейлист');
+                        this.refreshPlaylist(playlist.id);
+                    } else {
+                        Modal.alert('Трек уже есть в этом плейлисте', 'Дубликат');
                     }
                 }
             });
         });
 
+        // Обработчик кнопки "Подробнее"
         document.querySelectorAll('.details-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -914,6 +964,11 @@ var UI = class UI {
             this.renderLibrary();
             this.themeManager.loadFromDB(this.db);
             this.syncSettingsPage();
+            // Замена alert на модальное окно
+            await Modal.alert(
+                'Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.',
+                'Импорт данных'
+            );
         };
         input.click();
     }
@@ -1187,7 +1242,7 @@ var UI = class UI {
                     addBtn.addEventListener('click', async () => {
                         const trackObj = { ...track, id: utils.generateId() };
                         await this.db.addTrack(trackObj);
-                        alert('Трек добавлен в библиотеку');
+                        this.showToast('Трек добавлен в библиотеку');
                         this.loadTrackDetail(`archive:${identifier}`);
                     });
                 }
@@ -1199,6 +1254,7 @@ var UI = class UI {
                 this.unregisterTrackDetailVisualizer();
             }
         } else {
+            // Локальный трек из библиотеки
             const track = await this.db.getTrack(identifier);
             if (!track) {
                 Router.navigate('library');
@@ -1308,10 +1364,16 @@ var UI = class UI {
                 }
             }
 
+            // Обработчик добавления тега (Modal.prompt)
             document.getElementById('detail-add-tag').addEventListener('click', async () => {
-                const newTag = document.getElementById('detail-new-tag').value.trim();
-                if (newTag && !tags.includes(newTag)) {
-                    tags.push(newTag);
+                const newTag = await Modal.prompt(
+                    'Введите новый тег:',
+                    '',
+                    'рок, джаз...',
+                    'Добавление тега'
+                );
+                if (newTag && newTag.trim() && !tags.includes(newTag.trim())) {
+                    tags.push(newTag.trim());
                     await this.db.setTags(track.id, tags);
                     this.loadTrackDetail(track.id);
                     if (this.player.currentTrack && this.player.currentTrack.id === track.id) {
@@ -1320,6 +1382,7 @@ var UI = class UI {
                 }
             });
 
+            // Обработчик исключения/включения
             document.getElementById('detail-toggle-exclude').addEventListener('click', async () => {
                 const excludedTag = 'excluded';
                 if (tags.includes(excludedTag)) {
@@ -1335,38 +1398,39 @@ var UI = class UI {
                 }
             });
 
+            // В очередь
             document.getElementById('detail-add-to-queue').addEventListener('click', async () => {
                 await this.player.addToQueue([track.id]);
             });
 
+            // Воспроизвести сейчас
             document.getElementById('detail-play-now').addEventListener('click', async () => {
                 await this.player.playNow(track.id);
             });
 
+            // Добавить в плейлист (выбор из списка)
             document.getElementById('detail-add-to-playlist').addEventListener('click', async () => {
                 const playlists = await this.db.getAllPlaylists();
                 if (playlists.length === 0) {
-                    alert('Сначала создайте плейлист');
+                    Modal.alert('Сначала создайте плейлист', 'Нет плейлистов');
                     return;
                 }
-                const listStr = playlists.map((p, i) => `${i+1}: ${p.name}`).join('\n');
-                const choice = prompt(`Выберите плейлист (введите номер):\n${listStr}`);
-                if (choice) {
-                    const index = parseInt(choice) - 1;
-                    if (index >= 0 && index < playlists.length) {
-                        const playlist = playlists[index];
-                        if (!playlist.tracks.includes(track.id)) {
-                            playlist.tracks.push(track.id);
-                            await this.db.updatePlaylist(playlist);
-                            alert('Трек добавлен в плейлист');
-                            this.refreshPlaylist(playlist.id);
-                        } else {
-                            alert('Трек уже есть в плейлисте');
-                        }
+                const items = playlists.map(p => ({ label: p.name, value: p.id }));
+                const selectedId = await Modal.select(items, 'Выберите плейлист');
+                if (selectedId) {
+                    const playlist = playlists.find(p => p.id === selectedId);
+                    if (!playlist.tracks.includes(track.id)) {
+                        playlist.tracks.push(track.id);
+                        await this.db.updatePlaylist(playlist);
+                        this.showToast('Трек добавлен в плейлист');
+                        this.refreshPlaylist(playlist.id);
+                    } else {
+                        Modal.alert('Трек уже есть в этом плейлисте', 'Дубликат');
                     }
                 }
             });
 
+            // Удалить из библиотеки
             document.getElementById('detail-delete-from-library').addEventListener('click', async () => {
                 await this.deleteTrack(track.id);
                 Router.navigate('library');
@@ -1379,7 +1443,9 @@ var UI = class UI {
     async renderPlaylists() {
         const container = document.getElementById('playlists-list');
         if (!container) return;
+        
         const playlists = await this.db.getAllPlaylists();
+        console.log('Рендеринг плейлистов, получено:', playlists.length);
 
         // Сохраняем текущие состояния открытости перед перерисовкой
         const currentStates = {};
@@ -1400,7 +1466,7 @@ var UI = class UI {
             plDiv.className = 'playlist-item';
             plDiv.innerHTML = `
                 <div class="playlist-header">
-                    <strong>${pl.name}</strong>
+                    <strong>${utils.escapeHtml(pl.name)}</strong>
                     <div class="playlist-actions">
                         <button class="playlist-load" data-id="${pl.id}"><svg class="icon"><use href="#icon-play"></use></svg> Загрузить в очередь</button>
                         <button class="playlist-delete" data-id="${pl.id}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить</button>
@@ -1410,7 +1476,7 @@ var UI = class UI {
             `;
             container.appendChild(plDiv);
 
-            // Обработчик клика на заголовке
+            // Обработчик клика на заголовке (открыть/закрыть)
             plDiv.querySelector('.playlist-header').addEventListener('click', async (e) => {
                 if (e.target.closest('button')) return;
                 const tracksDiv = plDiv.querySelector('.playlist-tracks');
@@ -1432,17 +1498,24 @@ var UI = class UI {
                 const playlist = await this.db.getPlaylist(id);
                 if (playlist && playlist.tracks.length) {
                     await this.player.addToQueue(playlist.tracks);
+                    this.showToast(`Плейлист "${playlist.name}" загружен в очередь`, 'success');
                 }
             });
 
             // Кнопка удаления плейлиста
             plDiv.querySelector('.playlist-delete').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = e.target.closest('button').dataset.id;
-                if (confirm('Удалить плейлист?')) {
-                    await this.db.deletePlaylist(id);
-                    delete this.playlistOpenState[id];
-                    this.renderPlaylists();
+                const confirmed = await Modal.confirm(`Удалить плейлист "${pl.name}"?`, 'Подтверждение');
+                if (confirmed) {
+                    try {
+                        await this.db.deletePlaylist(pl.id);
+                        delete this.playlistOpenState[pl.id];
+                        this.showToast(`Плейлист "${pl.name}" удалён`, 'success');
+                        await this.renderPlaylists();
+                    } catch (error) {
+                        console.error('Ошибка удаления плейлиста:', error);
+                        Modal.alert('Не удалось удалить плейлист', 'Ошибка');
+                    }
                 }
             });
 
@@ -1470,7 +1543,6 @@ var UI = class UI {
             if (!track) continue;
             const trackDiv = document.createElement('div');
             trackDiv.className = 'playlist-track-item';
-            // Выделяем текущий трек
             const isCurrent = this.player.currentTrack && this.player.currentTrack.id === track.id;
             if (isCurrent) trackDiv.classList.add('current-track');
             trackDiv.innerHTML = `
@@ -1484,7 +1556,6 @@ var UI = class UI {
             container.appendChild(trackDiv);
         }
 
-        // Обработчики кнопок внутри плейлиста
         container.querySelectorAll('.playlist-track-up').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -1526,11 +1597,35 @@ var UI = class UI {
         });
     }
 
-    createPlaylistDialog() {
-        const name = prompt('Введите название плейлиста:');
-        if (name) {
-            this.db.addPlaylist({ name, tracks: [] });
-            this.renderPlaylists();
+    async createPlaylistDialog() {
+        console.log("ЗАПУСК: создание плейлиста");
+        try {
+            const name = await Modal.prompt(
+                'Введите название плейлиста:',
+                '',
+                'Название',
+                'Создание плейлиста'
+            );
+            
+            if (name && name.trim()) {
+                const newPlaylist = { 
+                    name: name.trim(), 
+                    tracks: [] 
+                };
+                const playlistId = await this.db.addPlaylist(newPlaylist);
+                console.log('Плейлист создан, ID:', playlistId);
+                this.showToast(`Плейлист "${name.trim()}" создан`, 'success');
+                // Принудительно сбрасываем состояния открытости (новый плейлист будет закрыт)
+                // и полностью перерисовываем список
+                await this.renderPlaylists();
+            } else if (name === '') {
+                this.showToast('Название плейлиста не может быть пустым', 'error');
+            }
+            console.log("ЗАВЕРШЕНО: создание плейлиста"); 
+        } catch (error) {
+            console.error('Ошибка при создании плейлиста:', error);
+            Modal.alert('Не удалось создать плейлист: ' + error.message, 'Ошибка');
+            console.error("ОШИБКА:", error);
         }
     }
 
@@ -1721,7 +1816,7 @@ var UI = class UI {
     async addArchiveTrack(identifier, title, creator, playNow = false) {
         const trackDetails = await ArchiveApi.getTrackDetails(identifier);
         if (!trackDetails || !trackDetails.streamUrl) {
-            alert('Не удалось получить ссылку на трек.');
+            this.showToast('Не удалось получить ссылку на трек.');
             return;
         }
         const track = {
@@ -1742,7 +1837,7 @@ var UI = class UI {
     async addArchiveTrackToLibrary(identifier, title, creator) {
         const trackDetails = await ArchiveApi.getTrackDetails(identifier);
         if (!trackDetails || !trackDetails.streamUrl) {
-            alert('Не удалось получить ссылку на трек.');
+            this.showToast('Не удалось получить ссылку на трек.');
             return;
         }
         const track = {
@@ -1754,7 +1849,7 @@ var UI = class UI {
             archiveId: identifier
         };
         await this.db.addTrack(track);
-        alert('Трек добавлен в библиотеку');
+        this.showToast('Трек добавлен в библиотеку');
     }
 
     async startRadio() {
@@ -1765,7 +1860,7 @@ var UI = class UI {
 
         const results = await ArchiveApi.search(randomKeyword, 10);
         if (!results.length) {
-            alert('Не удалось найти треки для радио, попробуйте позже.');
+            this.showToast('Не удалось найти треки для радио, попробуйте позже.');
             container.innerHTML = '<div>Ничего не найдено.</div>';
             return;
         }
@@ -1785,7 +1880,7 @@ var UI = class UI {
             }));
 
         if (tracks.length === 0) {
-            alert('Не удалось получить ссылки на треки.');
+            this.showToast('Не удалось получить ссылки на треки.');
             container.innerHTML = '<div>Не удалось загрузить радио.</div>';
             return;
         }
@@ -1798,11 +1893,61 @@ var UI = class UI {
         container.innerHTML = '<div>Радио запущено! Треки добавлены в очередь.</div>';
     }
 
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    showSkeleton(containerId, count = 8) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const skeletonHtml = '<div class="skeleton-item"><div class="skeleton-line" style="width: 60%"></div><div class="skeleton-line" style="width: 80%"></div><div class="skeleton-line" style="width: 40%"></div></div>'.repeat(count);
+        container.innerHTML = skeletonHtml;
+    }
+
+    updateRepeatButton(mode) {
+        const btn = document.getElementById('repeat-btn');
+        if (!btn) return;
+        const icons = {
+            0: '<svg class="icon"><use href="#icon-repeat"></use></svg>',
+            1: '<svg class="icon"><use href="#icon-repeat-one"></use></svg>',
+            2: '<svg class="icon"><use href="#icon-repeat"></use></svg>'
+        };
+        btn.innerHTML = icons[mode];
+        btn.classList.toggle('active', mode !== 0);
+    }
+
+    async saveQueueAsPlaylist() {
+        const name = await Modal.prompt(
+            'Название плейлиста:',
+            `Очередь ${new Date().toLocaleString()}`,
+            '',
+            'Сохранить очередь'
+        );
+        if (name && name.trim()) {
+            const trackIds = this.player.queue.filter(t => t.id).map(t => t.id);
+            await this.db.addPlaylist({ name: name.trim(), tracks: trackIds });
+            this.showToast(`Плейлист "${name.trim()}" создан`, 'success');
+            await this.renderPlaylists();
+        }
+    }
+
     async deleteTrack(trackId) {
         const track = await this.db.getTrack(trackId);
         if (!track) return;
 
-        if (!confirm(`Удалить трек "${track.name}" из библиотеки?`)) return;
+        const confirmed = await Modal.confirm(
+            `Удалить трек "${track.name}" из библиотеки?`,
+            'Удаление трека'
+        );
+        if (!confirmed) return;
 
         const queueIndex = this.player.queue.findIndex(t => t.id === trackId);
         if (queueIndex !== -1) {
@@ -1839,6 +1984,6 @@ var UI = class UI {
             Router.navigate('library');
         }
 
-        alert('Трек удалён из библиотеки');
+        this.showToast('Трек удалён из библиотеки');
     }
 };

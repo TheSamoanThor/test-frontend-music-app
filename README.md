@@ -1,4 +1,4 @@
-# 🎵 Music Player с тегами и очередью
+# Music Player с тегами и очередью
 
 Веб-приложение для проигрывания музыки прямо в браузере с поддержкой тегов, гибкой настройкой громкости, очередью воспроизведения, плейлистами, визуализатором и множеством тем оформления. Все данные хранятся локально в IndexedDB, музыкальные файлы читаются через File System Access API (или стандартный выбор файлов).
 
@@ -10,7 +10,7 @@
 
 ---
 
-## 🚀 Основные возможности
+## Основные возможности
 
 - **Библиотека треков** – после выбора папки с музыкой все аудиофайлы отображаются в виде списка.
 - **Теги** – каждому треку можно присвоить произвольные теги (например, «рок», «instrumental»). Теги используются для фильтрации, исключения треков и настройки громкости.
@@ -27,7 +27,7 @@
 
 ---
 
-## 📖 Как использовать
+## Как использовать
 
 0. Скачайте по ссылке: https://github.com/TheSamoanThor/test-frontend-music-app/releases/latest
 1. Откройте `index.html` в современном браузере (Chrome, Edge, Opera рекомендуются для полной поддержки File System Access).
@@ -57,7 +57,7 @@
 
 ---
 
-## 🔧 Технические детали
+## Технические детали
 
 - **Хранилище:** IndexedDB (объекты: tracks, queue, settings, tags, tagVolumes, playlists).
 - **Доступ к файлам:** используется File System Access API (`showDirectoryPicker`) для получения доступа к папке и возможности читать файлы по мере необходимости. В качестве запасного варианта – множественный выбор файлов через `<input type="file">`.
@@ -69,7 +69,7 @@
 
 ---
 
-## 📌 Примечания
+## Примечания
 
 - Приложение работает полностью в браузере, никакие данные не отправляются на сервер.
 - Для корректной работы File System Access API требуется, чтобы сайт открывался через `https://` или `localhost` (из-за политик безопасности браузера). При использовании простого `file://` выбор папки будет недоступен, но можно выбрать файлы по одному.
@@ -78,7 +78,7 @@
 
 ---
 
-# 🎵 Music Player with Tags and Queue
+# Music Player with Tags and Queue
 
 A web application for playing music directly in the browser with tag support, flexible volume control, a playback queue, playlists, a visualizer, and multiple themes. All data is stored locally in IndexedDB; music files are read via the File System Access API (or standard file picker).
 
@@ -90,7 +90,7 @@ I did not write these libraries; full credit goes to their respective authors.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 - **Track Library** – after selecting a music folder, all audio files are displayed in a list.
 - **Tags** – each track can have arbitrary tags (e.g., "rock", "instrumental"). Tags are used for filtering, excluding tracks, and volume adjustment.
@@ -107,7 +107,7 @@ I did not write these libraries; full credit goes to their respective authors.
 
 ---
 
-## 📖 How to Use
+## How to Use
 
 0. Download on https://github.com/TheSamoanThor/test-frontend-music-app/releases/latest 
 1. Open `index.html` in a modern browser (Chrome, Edge, Opera recommended for full File System Access support).
@@ -137,7 +137,7 @@ I did not write these libraries; full credit goes to their respective authors.
 
 ---
 
-## 🔧 Technical Details
+## Technical Details
 
 - **Storage:** IndexedDB (object stores: tracks, queue, settings, tags, tagVolumes, playlists).
 - **File access:** The File System Access API (`showDirectoryPicker`) is used to obtain a folder handle and read files on demand. A fallback to multiple file selection (`<input type="file">`) is provided for unsupported browsers.
@@ -149,7 +149,7 @@ I did not write these libraries; full credit goes to their respective authors.
 
 ---
 
-## 📌 Notes
+## Notes
 
 - The application runs entirely in the browser; no data is sent to any server.
 - For the File System Access API to work, the page must be served over `https://` or from `localhost` (due to browser security policies). When opened via `file://`, folder selection is unavailable, but you can still pick files individually.

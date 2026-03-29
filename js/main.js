@@ -5,7 +5,7 @@
     const fileHandler = new FileHandler(db);
     if (!fileHandler.isFileSystemAccessSupported) {
         fileHandler.setFallbackMode(true);
-        alert('Ваш браузер не поддерживает прямой выбор папки. Будет использован режим выбора отдельных файлов.');
+        Modal.alert('Ваш браузер не поддерживает прямой выбор папки. Будет использован режим выбора отдельных файлов.', 'Предупреждение');
     }
 
     const themeManager = new ThemeManager();
@@ -16,6 +16,7 @@
 
     player.setUI(ui);
     await player.loadVisualizerSettings();
+    await player.loadRepeatMode();
 
     ui.registerPlayerVisualizer();
 
@@ -84,4 +85,50 @@
             Router.navigate('library');
         });
     }
+
+    // Горячие клавиши
+    document.addEventListener('keydown', (e) => {
+        if (e.target.matches('input, textarea, select')) return;
+
+        switch (e.code) {
+            case 'Space':
+                e.preventDefault();
+                player.togglePlay();
+                break;
+            case 'ArrowLeft':
+                e.preventDefault();
+                player.prev(true);
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                player.next(true);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                player.setVolume(Math.min(100, player.baseVolume + 5));
+                break;
+            case 'ArrowDown':
+                e.preventDefault();
+                player.setVolume(Math.max(0, player.baseVolume - 5));
+                break;
+            case 'KeyF': // ctrl + f
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    Router.navigate('settings');
+                }
+                break;
+            case 'KeyQ': // ctrl + q
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    Router.navigate('queue');
+                }
+                break;
+            case 'KeyL': // ctrl + l
+                if (e.ctrlKey) {
+                    e.preventDefault();
+                    Router.navigate('library');
+                }
+                break;
+        }
+    });
 })();
