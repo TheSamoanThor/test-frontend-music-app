@@ -62,6 +62,7 @@ header {
     padding: 0.75rem 1.5rem;
     box-shadow: var(--shadow);
     z-index: 10;
+    flex-shrink: 0; /* чтобы шапка не сжималась */
 }
 
 .toolbar {
@@ -519,13 +520,14 @@ h2 {
 .player-bar {
     background-color: var(--player-bg);
     border-top: 1px solid var(--border-color);
-    padding: 0.5rem 2rem 2rem;
+    padding: 0.5rem 2rem 0.5rem;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
     cursor: pointer;
     color: var(--text-color);
     display: grid;
     align-items: center;
     gap: 0.5rem 1rem;
+    flex-shrink: 0; /* чтобы футер не сжимался */
 }
 .player-cover {
     width: 50px;
@@ -661,12 +663,16 @@ h2 {
 
 @media (max-width: 768px) {
     .player-bar {
+        position: sticky;
+        bottom: 0;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
         gap: 0.25rem;
         padding: 0.75rem;
+        background-color: var(--player-bg);
+        z-index: 100;
     }
     .player-cover {
         width: 44px;
@@ -969,7 +975,6 @@ input[type="checkbox"]:focus {
 .track-detail {
     display: flex;
     flex-direction: column;
-    /* gap: 0.25rem; */
     align-items: center;
     text-align: center;
 }
@@ -1281,7 +1286,6 @@ input[type="checkbox"]:focus {
     }
     main {
         padding: 0.5rem;
-        /* padding-bottom: 160px; */
     }
     h2 {
         font-size: 1.2rem;
