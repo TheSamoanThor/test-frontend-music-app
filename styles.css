@@ -969,19 +969,19 @@ input[type="checkbox"]:focus {
 .track-detail {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    /* gap: 0.25rem; */
     align-items: center;
     text-align: center;
 }
 .track-detail-cover {
-    max-width: 200px;
-    max-height: 200px;
+    max-width:150px;
+    max-height: 150px;
     border-radius: 8px;
     object-fit: cover;
 }
 .track-detail-cover.no-cover {
-    width: 200px;
-    height: 200px;
+    width: 150px;
+    height: 150px;
     background: var(--secondary-bg);
     display: flex;
     align-items: center;
@@ -1023,7 +1023,7 @@ input[type="checkbox"]:focus {
     background-color: var(--secondary-bg);
 }
 .track-playback-controls {
-    margin-top: 2rem;
+    margin-top: 0.5rem;
     padding: 1rem;
     background-color: var(--secondary-bg);
     border: 1px solid var(--border-color);
@@ -1059,7 +1059,7 @@ input[type="checkbox"]:focus {
     padding: 0.5rem;
     border-radius: 50%;
     width: 60px;
-    height: 60px;
+    height: 50px;
     display: inline-flex;
     align-items: center;
     justify-content: center;

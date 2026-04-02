@@ -11,11 +11,12 @@ var UI = class UI {
         this.playerVisualizerCallback = null;
         this.trackProgressHandler = null;
         this.trackDetailVisualizerCallback = null;
-        this.playlistOpenState = {}; // Хранит состояние открытости плейлистов
+        this.playlistOpenState = {};
 
         this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
 
         this.initEventListeners();
+        this.initLibraryClickBehavior();
 
         window.addEventListener('resize', utils.debounce(() => {
             this.applyMarqueeIfNeeded();
@@ -111,18 +112,34 @@ var UI = class UI {
                     await this.player.updateEffectiveVolume();
                 }
             }
-            else if (e.target.closest('.track-item') && 
-                     !e.target.closest('button') && 
-                     !e.target.closest('input') && 
-                     !e.target.closest('select') && 
-                     !e.target.closest('textarea')) {
-                const trackItem = e.target.closest('.track-item');
-                const trackId = trackItem.querySelector('.add-tag-btn')?.dataset.id;
-                if (trackId) {
-                    Router.navigate('track', trackId);
-                }
-            }
         });
+
+        // Делегированный обработчик Enter для поля ввода тега в библиотеке
+        const trackList = document.getElementById('track-list');
+        if (trackList) {
+            trackList.addEventListener('keypress', async (e) => {
+                if (e.target.classList.contains('tag-input') && e.key === 'Enter') {
+                    e.stopPropagation();
+                    const input = e.target;
+                    const id = input.dataset.id;
+                    const newTag = input.value.trim();
+                    if (newTag) {
+                        const currentTags = await this.db.getTags(id);
+                        if (!currentTags.includes(newTag)) {
+                            currentTags.push(newTag);
+                            await this.db.setTags(id, currentTags);
+                            this.renderLibrary();
+                            if (this.player.currentTrack && this.player.currentTrack.id === id) {
+                                await this.player.updateEffectiveVolume();
+                            }
+                        } else {
+                            Modal.alert('Такой тег уже есть у трека', 'Внимание');
+                        }
+                        input.value = '';
+                    }
+                }
+            });
+        }
 
         const queueList = document.getElementById('queue-list');
         if (queueList) {
@@ -182,6 +199,53 @@ var UI = class UI {
 
         document.getElementById('switch-to-file-picker')?.addEventListener('click', () => this.switchToFilePickerMode());
         document.getElementById('switch-to-folder-picker')?.addEventListener('click', () => this.switchToFolderPickerMode());
+    }
+
+    async initLibraryClickBehavior() {
+        const checkbox = document.getElementById('details-library-click-enabled');
+        if (!checkbox) return;
+
+        const savedValue = await this.db.getSetting('library_click_behavior');
+        const isDetailMode = savedValue !== undefined ? savedValue : false;
+        checkbox.checked = isDetailMode;
+
+        if (this._checkboxChangeHandler) {
+            checkbox.removeEventListener('change', this._checkboxChangeHandler);
+        }
+        this._checkboxChangeHandler = async (e) => {
+            await this.db.setSetting('library_click_behavior', e.target.checked);
+        };
+        checkbox.addEventListener('change', this._checkboxChangeHandler);
+
+        if (this.libraryClickHandler) {
+            document.removeEventListener('click', this.libraryClickHandler);
+        }
+
+        this.libraryClickHandler = async (e) => {
+            const trackItem = e.target.closest('.track-item');
+            if (!trackItem) return;
+            if (e.target.closest('button') || e.target.closest('input') || 
+                e.target.closest('select') || e.target.closest('textarea')) {
+                return;
+            }
+            const trackId = trackItem.querySelector('.add-tag-btn')?.dataset.id;
+            if (!trackId) return;
+
+            const cb = document.getElementById('details-library-click-enabled');
+            const isDetail = cb ? cb.checked : true;
+
+            if (isDetail) {
+                Router.navigate('track', trackId);
+            } else {
+                const track = await this.db.getTrack(trackId);
+                if (track) {
+                    await this.player.playNow(track);
+                } else {
+                    this.showToast('Трек не найден в библиотеке', 'error');
+                }
+            }
+        };
+        document.addEventListener('click', this.libraryClickHandler);
     }
 
     async handleFileAccessLost(track) {
@@ -612,27 +676,23 @@ var UI = class UI {
             listEl.appendChild(li);
         }
 
-        // Обработчик добавления тега (с использованием Modal.prompt)
         document.querySelectorAll('.add-tag-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const id = btn.dataset.id;
-                const newTag = await Modal.prompt(
-                    'Введите новый тег:',
-                    '',
-                    'рок, джаз, инструментал...',
-                    'Добавление тега'
-                );
-                if (newTag && newTag.trim()) {
+                const input = btn.closest('.track-item').querySelector('.tag-input');
+                if (!input) return;
+                const newTag = input.value.trim();
+                if (newTag) {
                     const currentTags = await this.db.getTags(id);
-                    const trimmed = newTag.trim();
-                    if (!currentTags.includes(trimmed)) {
-                        currentTags.push(trimmed);
+                    if (!currentTags.includes(newTag)) {
+                        currentTags.push(newTag);
                         await this.db.setTags(id, currentTags);
                         this.renderLibrary();
                         if (this.player.currentTrack && this.player.currentTrack.id === id) {
                             await this.player.updateEffectiveVolume();
                         }
+                        input.value = '';
                     } else {
                         Modal.alert('Такой тег уже есть у трека', 'Внимание');
                     }
@@ -857,9 +917,8 @@ var UI = class UI {
         } else {
             this.updateTrackPlaybackControls();
         }
-        // Обновляем очередь и плейлисты, чтобы выделить текущий трек
         this.renderQueue(this.player.queue);
-        this.renderPlaylists(); // перерисовка плейлистов обновит выделение, но сохранит открытость
+        this.renderPlaylists();
     }
 
     setPlayPauseIcon(playing) {
@@ -964,7 +1023,7 @@ var UI = class UI {
             this.renderLibrary();
             this.themeManager.loadFromDB(this.db);
             this.syncSettingsPage();
-            // Замена alert на модальное окно
+            await this.initLibraryClickBehavior();
             await Modal.alert(
                 'Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.',
                 'Импорт данных'
@@ -981,6 +1040,16 @@ var UI = class UI {
         const colorInput = document.getElementById('custom-color-settings');
         if (themeSelect) themeSelect.value = preset;
         if (colorInput) colorInput.value = color;
+
+        const libraryClickCheckbox = document.getElementById('details-library-click-enabled');
+        if (libraryClickCheckbox) {
+            const saved = await this.db.getSetting('library_click_behavior');
+            libraryClickCheckbox.checked = saved !== undefined ? saved : false;
+            if (this._checkboxChangeHandler) {
+                libraryClickCheckbox.removeEventListener('change', this._checkboxChangeHandler);
+                libraryClickCheckbox.addEventListener('change', this._checkboxChangeHandler);
+            }
+        }
 
         const allTracks = await this.db.getAllTracks();
         const excludedList = document.getElementById('excluded-tracks-list');
@@ -1202,7 +1271,7 @@ var UI = class UI {
                 <div class="track-detail">
                     <div class="track-detail-media">
                         <img src="" alt="cover" class="track-detail-cover" style="display:none;">
-                        <canvas id="track-detail-visualizer" width="200" height="200" style="display:block;"></canvas>
+                        <canvas id="track-detail-visualizer" width="150" height="150" style="display:block;"></canvas>
                         <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
                     </div>
                     <h3>${utils.escapeHtml(track.name)}</h3>
@@ -1254,7 +1323,6 @@ var UI = class UI {
                 this.unregisterTrackDetailVisualizer();
             }
         } else {
-            // Локальный трек из библиотеки
             const track = await this.db.getTrack(identifier);
             if (!track) {
                 Router.navigate('library');
@@ -1280,7 +1348,7 @@ var UI = class UI {
                 mediaHtml = `
                     <div class="track-detail-media">
                         <img id="track-detail-cover" src="${pictureUrl}" alt="cover" class="track-detail-cover" style="max-width:200px; max-height:200px; border-radius:8px;">
-                        <canvas id="track-detail-visualizer" width="200" height="200" style="display:none;"></canvas>
+                        <canvas id="track-detail-visualizer" width="150" height="150" style="display:none;"></canvas>
                         <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
                     </div>
                 `;
@@ -1288,7 +1356,7 @@ var UI = class UI {
                 mediaHtml = `
                     <div class="track-detail-media">
                         <img id="track-detail-cover" src="" alt="cover" class="track-detail-cover" style="display:none;">
-                        <canvas id="track-detail-visualizer" width="200" height="200" style="display:block;"></canvas>
+                        <canvas id="track-detail-visualizer" width="150" height="150" style="display:block;"></canvas>
                         <div class="track-detail-cover no-cover" style="display:none;"><svg class="icon"><use href="#icon-note"></use></svg></div>
                     </div>
                 `;
@@ -1298,8 +1366,8 @@ var UI = class UI {
                 <div class="track-detail">
                     ${mediaHtml}
                     <h3>${track.name}</h3>
-                    <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p>
-                    <p><strong>Путь:</strong> ${track.path || 'неизвестно'}</p>
+                    <!-- <p><strong>Длительность:</strong> ${utils.formatTime(track.duration)}</p> -->
+                    <!-- <p><strong>Путь:</strong> ${track.path || 'неизвестно'}</p> -->
                     <p><strong>Теги:</strong> ${tagsHtml}</p>
                     <p><strong>Исключён:</strong> ${isExcluded ? 'да' : 'нет'}</p>
                     <div class="track-detail-actions">
@@ -1364,23 +1432,44 @@ var UI = class UI {
                 }
             }
 
-            // Обработчик добавления тега (Modal.prompt)
+            // Обработчик добавления тега (кнопка)
             document.getElementById('detail-add-tag').addEventListener('click', async () => {
-                const newTag = await Modal.prompt(
-                    'Введите новый тег:',
-                    '',
-                    'рок, джаз...',
-                    'Добавление тега'
-                );
-                if (newTag && newTag.trim() && !tags.includes(newTag.trim())) {
-                    tags.push(newTag.trim());
+                const input = document.getElementById('detail-new-tag');
+                const newTag = input.value.trim();
+                if (newTag && !tags.includes(newTag)) {
+                    tags.push(newTag);
                     await this.db.setTags(track.id, tags);
                     this.loadTrackDetail(track.id);
                     if (this.player.currentTrack && this.player.currentTrack.id === track.id) {
                         await this.player.updateEffectiveVolume();
                     }
+                    input.value = '';
+                } else if (newTag && tags.includes(newTag)) {
+                    Modal.alert('Такой тег уже есть у трека', 'Внимание');
                 }
             });
+
+            // Обработчик Enter для поля ввода тега в деталях
+            const newTagInput = document.getElementById('detail-new-tag');
+            if (newTagInput) {
+                newTagInput.addEventListener('keypress', async (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const newTag = newTagInput.value.trim();
+                        if (newTag && !tags.includes(newTag)) {
+                            tags.push(newTag);
+                            await this.db.setTags(track.id, tags);
+                            this.loadTrackDetail(track.id);
+                            if (this.player.currentTrack && this.player.currentTrack.id === track.id) {
+                                await this.player.updateEffectiveVolume();
+                            }
+                            newTagInput.value = '';
+                        } else if (newTag && tags.includes(newTag)) {
+                            Modal.alert('Такой тег уже есть у трека', 'Внимание');
+                        }
+                    }
+                });
+            }
 
             // Обработчик исключения/включения
             document.getElementById('detail-toggle-exclude').addEventListener('click', async () => {
@@ -1408,7 +1497,7 @@ var UI = class UI {
                 await this.player.playNow(track.id);
             });
 
-            // Добавить в плейлист (выбор из списка)
+            // Добавить в плейлист
             document.getElementById('detail-add-to-playlist').addEventListener('click', async () => {
                 const playlists = await this.db.getAllPlaylists();
                 if (playlists.length === 0) {
@@ -1447,7 +1536,6 @@ var UI = class UI {
         const playlists = await this.db.getAllPlaylists();
         console.log('Рендеринг плейлистов, получено:', playlists.length);
 
-        // Сохраняем текущие состояния открытости перед перерисовкой
         const currentStates = {};
         document.querySelectorAll('.playlist-item').forEach(item => {
             const id = item.querySelector('.playlist-load')?.dataset.id;
@@ -1476,7 +1564,6 @@ var UI = class UI {
             `;
             container.appendChild(plDiv);
 
-            // Обработчик клика на заголовке (открыть/закрыть)
             plDiv.querySelector('.playlist-header').addEventListener('click', async (e) => {
                 if (e.target.closest('button')) return;
                 const tracksDiv = plDiv.querySelector('.playlist-tracks');
@@ -1491,7 +1578,6 @@ var UI = class UI {
                 }
             });
 
-            // Кнопка загрузки в очередь
             plDiv.querySelector('.playlist-load').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const id = e.target.closest('button').dataset.id;
@@ -1502,7 +1588,6 @@ var UI = class UI {
                 }
             });
 
-            // Кнопка удаления плейлиста
             plDiv.querySelector('.playlist-delete').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const confirmed = await Modal.confirm(`Удалить плейлист "${pl.name}"?`, 'Подтверждение');
@@ -1519,7 +1604,6 @@ var UI = class UI {
                 }
             });
 
-            // Если плейлист был открыт до перерисовки, сразу загружаем треки
             if (this.playlistOpenState[pl.id]) {
                 const tracksDiv = plDiv.querySelector('.playlist-tracks');
                 await this.renderPlaylistTracks(pl.id, tracksDiv);
@@ -1615,8 +1699,6 @@ var UI = class UI {
                 const playlistId = await this.db.addPlaylist(newPlaylist);
                 console.log('Плейлист создан, ID:', playlistId);
                 this.showToast(`Плейлист "${name.trim()}" создан`, 'success');
-                // Принудительно сбрасываем состояния открытости (новый плейлист будет закрыт)
-                // и полностью перерисовываем список
                 await this.renderPlaylists();
             } else if (name === '') {
                 this.showToast('Название плейлиста не может быть пустым', 'error');
