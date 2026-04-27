@@ -14,6 +14,9 @@
     const player = new Player(db, fileHandler);
     const ui = new UI(db, player, fileHandler, themeManager);
 
+    // Загружаем сохранённую позицию навигации
+    await ui.loadNavPosition();
+
     player.setUI(ui);
     await player.loadVisualizerSettings();
     await player.loadRepeatMode();

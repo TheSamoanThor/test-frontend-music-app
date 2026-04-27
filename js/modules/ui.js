@@ -16,6 +16,11 @@ var UI = class UI {
         this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
 
         this.initEventListeners();
+
+        // Настройка видимости опций навигации в зависимости от ширины
+        this.initNavPositionOptions();
+        window.addEventListener('resize', utils.debounce(() => this.adjustNavPositionOptions(), 200));
+
         this.initLibraryClickBehavior();
 
         window.addEventListener('resize', utils.debounce(() => {
@@ -1040,6 +1045,26 @@ var UI = class UI {
         const colorInput = document.getElementById('custom-color-settings');
         if (themeSelect) themeSelect.value = preset;
         if (colorInput) colorInput.value = color;
+
+        const navSelect = document.getElementById('nav-position-select');
+        if (navSelect) {
+            const savedPos = await this.db.getSetting('nav_position') || 'top';
+            if (navSelect.value !== savedPos) {
+                navSelect.value = savedPos;
+            }
+            // Удаляем старый обработчик, чтобы не вешать несколько
+            if (navSelect._navChangeHandler) {
+                navSelect.removeEventListener('change', navSelect._navChangeHandler);
+            }
+            const handler = async (e) => {
+                this.applyNavPosition(e.target.value);
+                this.adjustNavPositionOptions();
+            };
+            navSelect.addEventListener('change', handler);
+            navSelect._navChangeHandler = handler;
+            this.adjustNavPositionOptions();
+        }
+
 
         const libraryClickCheckbox = document.getElementById('details-library-click-enabled');
         if (libraryClickCheckbox) {
@@ -2067,5 +2092,62 @@ var UI = class UI {
         }
 
         this.showToast('Трек удалён из библиотеки');
+    }
+
+    // Загрузка позиции навигации из БД и применение
+    async loadNavPosition() {
+        const position = await this.db.getSetting('nav_position') || 'top';
+        this.applyNavPosition(position);
+        const navSelect = document.getElementById('nav-position-select');
+        if (navSelect) {
+            if (navSelect.value !== position) navSelect.value = position;
+            this.adjustNavPositionOptions();
+        }
+    }
+
+    // Применение позиции навигации (классы body, сохранение, обновление селектора)
+    applyNavPosition(position) {
+        document.body.classList.remove('nav-top', 'nav-bottom', 'nav-left', 'nav-right');
+        document.body.classList.add(`nav-${position}`);
+        this.db.setSetting('nav_position', position).catch(console.error);
+        
+        // Обновляем селектор, если он существует
+        const navSelect = document.getElementById('nav-position-select');
+        if (navSelect && navSelect.value !== position) {
+            navSelect.value = position;
+        }
+        
+        if (window.initAllRanges) setTimeout(window.initAllRanges, 100);
+    }
+
+    adjustNavPositionOptions() {
+        const isNarrow = window.innerWidth <= 768;
+        const navSelect = document.getElementById('nav-position-select');
+        if (!navSelect) return;
+
+        const optionLeft = navSelect.querySelector('option[value="left"]');
+        const optionRight = navSelect.querySelector('option[value="right"]');
+
+        if (!optionLeft || !optionRight) return;
+
+        if (isNarrow) {
+            optionLeft.style.display = 'none';
+            optionRight.style.display = 'none';
+            const current = navSelect.value;
+            if (current === 'left' || current === 'right') {
+                navSelect.value = 'top';
+                this.applyNavPosition('top');
+            }
+        } else {
+            optionLeft.style.display = '';
+            optionRight.style.display = '';
+        }
+    }
+
+    async initNavPositionOptions() {
+        if (document.readyState === 'loading') {
+            await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
+        }
+        this.adjustNavPositionOptions();
     }
 };

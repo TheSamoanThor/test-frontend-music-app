@@ -107,6 +107,7 @@ header {
     font-weight: 500;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.3rem;
 }
 .nav-btn:hover {
@@ -1654,4 +1655,178 @@ input[type="checkbox"]:focus {
         width: 100%;
         text-align: center;
     }
+}
+
+/* ========== РАСПОЛОЖЕНИЕ НАВИГАЦИИ ========== */
+#app {
+    display: grid;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ----- ПОЗИЦИЯ: СВЕРХУ (по умолчанию) ----- */
+body.nav-top #app {
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: 
+        "header"
+        "main"
+        "footer";
+}
+body.nav-top header {
+    grid-area: header;
+}
+body.nav-top main {
+    grid-area: main;
+    overflow: auto;
+}
+body.nav-top footer {
+    grid-area: footer;
+}
+
+/* ----- ПОЗИЦИЯ: СНИЗУ ----- */
+body.nav-bottom #app {
+    grid-template-rows: 1fr auto auto;
+    grid-template-areas: 
+        "main"
+        "header"
+        "footer";
+}
+body.nav-bottom header {
+    grid-area: header;
+}
+body.nav-bottom main {
+    grid-area: main;
+}
+body.nav-bottom footer {
+    grid-area: footer;
+}
+
+/* ----- ПОЗИЦИЯ: СЛЕВА ----- */
+body.nav-left #app {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: 
+        "header main"
+        "footer footer";
+}
+body.nav-left header {
+    grid-area: header;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    border-right: 1px solid var(--border-color);
+}
+body.nav-left header .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+}
+body.nav-left header .main-nav {
+    flex-direction: column;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    gap: 0.5rem;
+}
+body.nav-left header .nav-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: 0.75rem 1rem;
+}
+body.nav-left main {
+    grid-area: main;
+    overflow: auto;
+}
+body.nav-left footer {
+    grid-area: footer;
+}
+
+/* ----- ПОЗИЦИЯ: СПРАВА ----- */
+body.nav-right #app {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: 
+        "main header"
+        "footer footer";
+}
+body.nav-right header {
+    grid-area: header;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    border-left: 1px solid var(--border-color);
+}
+body.nav-right header .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+}
+body.nav-right header .main-nav {
+    flex-direction: column;
+    width: 100%;
+    flex: 1;
+    display: flex;
+    gap: 0.5rem;
+}
+body.nav-right header .nav-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: 0.75rem 1rem;
+}
+body.nav-right main {
+    grid-area: main;
+    overflow: auto;
+}
+body.nav-right footer {
+    grid-area: footer;
+}
+
+/* ----- АДАПТИВ: НА УЗКИХ ЭКРАНАХ ЛЕВУЮ/ПРАВУЮ ПАНЕЛЬ ПРЕВРАЩАЕМ В ВЕРХНЮЮ ----- */
+@media (max-width: 768px) {
+    body.nav-left #app,
+    body.nav-right #app {
+        grid-template-rows: auto 1fr auto;
+        grid-template-columns: 1fr;
+        grid-template-areas: 
+            "header"
+            "main"
+            "footer";
+    }
+    body.nav-left header,
+    body.nav-right header {
+        flex-direction: row;
+        border: none;
+        border-bottom: 1px solid var(--border-color);
+        height: auto;
+        overflow: visible;
+    }
+    body.nav-left header .toolbar,
+    body.nav-right header .toolbar {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    body.nav-left header .main-nav,
+    body.nav-right header .main-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        flex: none;
+        width: auto;
+    }
+    body.nav-left header .nav-btn,
+    body.nav-right header .nav-btn {
+        width: auto;
+        flex: 1 1 auto;
+        padding: 0.5rem 1rem;
+    }
+}
+
+body.nav-left .toolbar > #import-btn,
+body.nav-left .toolbar > #export-btn,
+body.nav-left .toolbar > #theme-select,
+body.nav-right .toolbar > #import-btn,
+body.nav-right .toolbar > #export-btn,
+body.nav-right .toolbar > #theme-select {
+    display: none;
 }
