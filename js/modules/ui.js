@@ -1403,6 +1403,7 @@ var UI = class UI {
                         <button id="detail-play-now"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
                         <button id="detail-add-to-playlist"><svg class="icon"><use href="#icon-playlist"></use></svg> В плейлист</button>
                         <button id="detail-delete-from-library" class="delete-btn"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить из библиотеки</button>
+                        <button id="detail-edit-volume-intervals"><svg class="icon"><use href="#icon-settings"></use></svg> Интервалы громкости</button>
                     </div>
                 </div>
             `;
@@ -1548,6 +1549,10 @@ var UI = class UI {
             document.getElementById('detail-delete-from-library').addEventListener('click', async () => {
                 await this.deleteTrack(track.id);
                 Router.navigate('library');
+            });
+
+            document.getElementById('detail-edit-volume-intervals').addEventListener('click', () => {
+                this.openVolumeIntervalEditor(track);
             });
         }
 
@@ -2072,6 +2077,7 @@ var UI = class UI {
         }
 
         await this.db.setTags(trackId, []);
+        await this.db.deleteVolumeIntervals(trackId);
         await this.db.deleteTrack(trackId);
 
         if (this.player.currentTrack && this.player.currentTrack.id === trackId) {
@@ -2149,5 +2155,175 @@ var UI = class UI {
             await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
         }
         this.adjustNavPositionOptions();
+    }
+
+    // ========== МЕТОДЫ ДЛЯ РЕДАКТОРА ИНТЕРВАЛОВ ГРОМКОСТИ ==========
+
+    async openVolumeIntervalEditor(track) {
+        let intervals = await this.db.getVolumeIntervals(track.id) || [];
+        
+        let modal = document.getElementById('volume-interval-editor');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'volume-interval-editor';
+            modal.className = 'modal-overlay hidden';
+            modal.innerHTML = `
+                <div class="modal-container" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h3>Интервалы громкости</h3>
+                        <button class="modal-close" id="interval-editor-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="interval-editor-section">
+                            <label>Начало (сек):</label>
+                            <input type="number" id="interval-start" step="0.1" value="0">
+                            <button id="interval-set-start" class="small-btn">из текущего</button>
+                        </div>
+                        <div class="interval-editor-section">
+                            <label>Конец (сек):</label>
+                            <input type="number" id="interval-end" step="0.1" value="10">
+                            <button id="interval-set-end" class="small-btn">из текущего</button>
+                        </div>
+                        <div class="interval-editor-section">
+                            <label>Громкость (множитель):</label>
+                            <input type="range" id="interval-volume" min="0.1" max="2.0" step="0.01" value="1.0">
+                            <span id="interval-volume-value">1.00</span>
+                        </div>
+                        <div class="interval-editor-actions">
+                            <button id="interval-add-btn" class="primary-btn">Добавить / Обновить</button>
+                            <button id="interval-cancel-edit" class="btn-secondary">Отменить редактирование</button>
+                        </div>
+                        <div class="interval-list-section">
+                            <h4>Список интервалов</h4>
+                            <ul id="interval-list" class="interval-list"></ul>
+                        </div>
+                    </div>
+                    <div class="modal-buttons">
+                        <button id="interval-save-close" class="modal-btn modal-btn-primary">Закрыть</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            this.attachIntervalEditorEvents(track);
+        }
+                
+        this.refreshIntervalList(intervals);
+        this.currentIntervalEditIndex = -1;
+        this.intervalEditorTrackId = track.id;
+        this.intervalEditorIntervals = intervals;
+        
+        modal.classList.remove('hidden');
+    }
+
+    attachIntervalEditorEvents(track) {
+        const modal = document.getElementById('volume-interval-editor');
+        if (modal._eventsAttached) return;
+        modal._eventsAttached = true;
+        
+        const closeModal = () => {
+            modal.classList.add('hidden');
+            // Таймеров больше нет, очищать нечего
+        };
+        modal.querySelector('#interval-editor-close').addEventListener('click', closeModal);
+        modal.querySelector('#interval-save-close').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        
+        const volumeSlider = modal.querySelector('#interval-volume');
+        const volumeSpan = modal.querySelector('#interval-volume-value');
+        volumeSlider.addEventListener('input', () => {
+            volumeSpan.textContent = volumeSlider.value;
+        });
+        
+        modal.querySelector('#interval-set-start').addEventListener('click', () => {
+            if (this.player.currentTrack && this.player.currentTrack.id === track.id) {
+                document.getElementById('interval-start').value = this.player.audio.currentTime.toFixed(1);
+            }
+        });
+        modal.querySelector('#interval-set-end').addEventListener('click', () => {
+            if (this.player.currentTrack && this.player.currentTrack.id === track.id) {
+                document.getElementById('interval-end').value = this.player.audio.currentTime.toFixed(1);
+            }
+        });
+        
+        modal.querySelector('#interval-add-btn').addEventListener('click', async () => {
+            const start = parseFloat(document.getElementById('interval-start').value);
+            const end = parseFloat(document.getElementById('interval-end').value);
+            const volume = parseFloat(volumeSlider.value);
+            if (isNaN(start) || isNaN(end) || start >= end) {
+                Modal.alert('Начало должно быть меньше конца', 'Ошибка');
+                return;
+            }
+            const newInterval = { start, end, volume };
+            let intervals = this.intervalEditorIntervals;
+            const editIndex = this.currentIntervalEditIndex;
+            if (editIndex >= 0) {
+                intervals[editIndex] = newInterval;
+            } else {
+                const overlaps = intervals.some((inv) => (start < inv.end && end > inv.start));
+                if (overlaps) {
+                    Modal.alert('Интервал пересекается с существующим. Отредактируйте или удалите старый.', 'Конфликт');
+                    return;
+                }
+                intervals.push(newInterval);
+            }
+            intervals.sort((a,b) => a.start - b.start);
+            await this.player.updateVolumeIntervals(track.id, intervals);
+            this.intervalEditorIntervals = intervals;
+            this.refreshIntervalList(intervals);
+            this.currentIntervalEditIndex = -1;
+            document.getElementById('interval-add-btn').textContent = 'Добавить / Обновить';
+        });
+        
+        modal.querySelector('#interval-cancel-edit').addEventListener('click', () => {
+            this.currentIntervalEditIndex = -1;
+            document.getElementById('interval-add-btn').textContent = 'Добавить / Обновить';
+            document.getElementById('interval-start').value = '';
+            document.getElementById('interval-end').value = '';
+            volumeSlider.value = '1.0';
+            volumeSpan.textContent = '1.00';
+        });
+    }
+
+    refreshIntervalList(intervals) {
+        const list = document.getElementById('interval-list');
+        if (!list) return;
+        list.innerHTML = '';
+        intervals.forEach((inv, idx) => {
+            const li = document.createElement('li');
+            li.className = 'interval-list-item';
+            li.innerHTML = `
+                <span>${inv.start.toFixed(1)}с – ${inv.end.toFixed(1)}с, громкость ×${inv.volume.toFixed(2)}</span>
+                <div class="interval-item-buttons">
+                    <button class="interval-edit" data-index="${idx}" title="Редактировать">
+                        <svg class="icon"><use href="#icon-edit"></use></svg>
+                    </button>
+                    <button class="interval-delete" data-index="${idx}" title="Удалить">
+                        <svg class="icon"><use href="#icon-trash"></use></svg>
+                    </button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+        list.querySelectorAll('.interval-edit').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const idx = parseInt(btn.dataset.index);
+                const inv = intervals[idx];
+                document.getElementById('interval-start').value = inv.start;
+                document.getElementById('interval-end').value = inv.end;
+                document.getElementById('interval-volume').value = inv.volume;
+                document.getElementById('interval-volume-value').textContent = inv.volume;
+                this.currentIntervalEditIndex = idx;
+                document.getElementById('interval-add-btn').textContent = 'Обновить';
+            });
+        });
+        list.querySelectorAll('.interval-delete').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const idx = parseInt(btn.dataset.index);
+                intervals.splice(idx, 1);
+                await this.player.updateVolumeIntervals(this.intervalEditorTrackId, intervals);
+                this.intervalEditorIntervals = intervals;
+                this.refreshIntervalList(intervals);
+            });
+        });
     }
 };

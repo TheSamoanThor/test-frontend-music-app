@@ -1,7 +1,7 @@
 var Database = class Database {
     constructor() {
         this.dbName = 'MusicPlayerDB';
-        this.dbVersion = 3;
+        this.dbVersion = 4; // увеличена версия
         this.db = null;
         this.stores = {
             tracks: 'tracks',
@@ -9,7 +9,8 @@ var Database = class Database {
             settings: 'settings',
             tags: 'tags',
             tagVolumes: 'tagVolumes',
-            playlists: 'playlists'
+            playlists: 'playlists',
+            volumeIntervals: 'volumeIntervals' // новое
         };
     }
 
@@ -50,6 +51,13 @@ var Database = class Database {
                 if (oldVersion < 3) {
                     if (!db.objectStoreNames.contains(this.stores.playlists)) {
                         db.createObjectStore(this.stores.playlists, { keyPath: 'id' });
+                    }
+                }
+
+                // Новая версия 4: добавляем хранилище интервалов громкости
+                if (oldVersion < 4) {
+                    if (!db.objectStoreNames.contains(this.stores.volumeIntervals)) {
+                        db.createObjectStore(this.stores.volumeIntervals, { keyPath: 'trackId' });
                     }
                 }
             };
@@ -274,6 +282,37 @@ var Database = class Database {
         });
     }
 
+    // ========== МЕТОДЫ ДЛЯ ИНТЕРВАЛОВ ГРОМКОСТИ ==========
+    async getVolumeIntervals(trackId) {
+        const tx = this.db.transaction(this.stores.volumeIntervals, 'readonly');
+        const store = tx.objectStore(this.stores.volumeIntervals);
+        return new Promise((resolve, reject) => {
+            const request = store.get(trackId);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result ? request.result.intervals : []);
+        });
+    }
+
+    async setVolumeIntervals(trackId, intervals) {
+        const tx = this.db.transaction(this.stores.volumeIntervals, 'readwrite');
+        const store = tx.objectStore(this.stores.volumeIntervals);
+        return new Promise((resolve, reject) => {
+            const request = store.put({ trackId, intervals });
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    }
+
+    async deleteVolumeIntervals(trackId) {
+        const tx = this.db.transaction(this.stores.volumeIntervals, 'readwrite');
+        const store = tx.objectStore(this.stores.volumeIntervals);
+        return new Promise((resolve, reject) => {
+            const request = store.delete(trackId);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        });
+    }
+
     async exportData() {
         const stores = [
             this.stores.tracks,
@@ -281,7 +320,8 @@ var Database = class Database {
             this.stores.settings,
             this.stores.tags,
             this.stores.tagVolumes,
-            this.stores.playlists
+            this.stores.playlists,
+            this.stores.volumeIntervals  // добавлено
         ];
         const data = {};
         for (let storeName of stores) {
@@ -340,7 +380,8 @@ var Database = class Database {
             this.stores.queue,
             this.stores.tags,
             this.stores.tagVolumes,
-            this.stores.playlists
+            this.stores.playlists,
+            this.stores.volumeIntervals  // добавлено
         ];
         for (let storeName of stores) {
             const tx = this.db.transaction(storeName, 'readwrite');

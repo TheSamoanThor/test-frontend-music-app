@@ -32,6 +32,10 @@ var Player = class Player {
 
         this.repeatMode = 0; // 0 - off, 1 - repeat one, 2 - repeat queue
 
+        // Новые свойства для интервалов громкости
+        this.currentVolumeIntervals = [];
+        this.activeVolumeInterval = null;
+
         this.initAudioEvents();
     }
 
@@ -45,6 +49,7 @@ var Player = class Player {
             if (this.ui) {
                 this.ui.updateAllProgressBars(this.audio.currentTime, this.audio.duration);
             }
+            this.checkAndUpdateVolume(); // вызов проверки интервалов
         });
 
         this.audio.addEventListener('ended', () => {
@@ -104,6 +109,13 @@ var Player = class Player {
                     this.currentObjectUrl = null;
                 }
                 this.currentTrack = track;
+                // Загрузка интервалов громкости для трека (если есть id)
+                if (track.id) {
+                    this.currentVolumeIntervals = await this.db.getVolumeIntervals(track.id) || [];
+                } else {
+                    this.currentVolumeIntervals = [];
+                }
+                this.activeVolumeInterval = null;
                 this.audio.src = track.streamUrl;
                 return new Promise((resolve) => {
                     let resolved = false;
@@ -159,6 +171,14 @@ var Player = class Player {
             }
 
             this.currentTrack = track;
+            // Загрузка интервалов громкости
+            if (track.id) {
+                this.currentVolumeIntervals = await this.db.getVolumeIntervals(track.id) || [];
+            } else {
+                this.currentVolumeIntervals = [];
+            }
+            this.activeVolumeInterval = null;
+
             const url = URL.createObjectURL(file);
             this.currentObjectUrl = url;
             this.audio.src = url;
@@ -184,6 +204,23 @@ var Player = class Player {
         }
     }
 
+    // НОВЫЙ МЕТОД: проверка активного интервала громкости
+    checkAndUpdateVolume() {
+        if (!this.currentTrack || !this.audio) return;
+        const currentTime = this.audio.currentTime;
+        let newActiveInterval = null;
+        for (let interval of this.currentVolumeIntervals) {
+            if (currentTime >= interval.start && currentTime <= interval.end) {
+                newActiveInterval = interval;
+                break;
+            }
+        }
+        if (newActiveInterval !== this.activeVolumeInterval) {
+            this.activeVolumeInterval = newActiveInterval;
+            this.updateEffectiveVolume();
+        }
+    }
+
     async updateEffectiveVolume() {
         if (!this.currentTrack) return;
         try {
@@ -201,6 +238,11 @@ var Player = class Player {
                     const vol = await this.db.getTagVolume(tag);
                     factor *= vol;
                 }
+                factor = Math.min(2.0, Math.max(0.1, factor));
+            }
+            // Применяем множитель активного интервала
+            if (this.activeVolumeInterval && this.activeVolumeInterval.volume) {
+                factor *= this.activeVolumeInterval.volume;
                 factor = Math.min(2.0, Math.max(0.1, factor));
             }
             const effective = (this.baseVolume / 100) * factor;
@@ -484,6 +526,16 @@ var Player = class Player {
     async loadRepeatMode() {
         this.repeatMode = await this.db.getSetting('repeat_mode') || 0;
         if (this.ui) this.ui.updateRepeatButton(this.repeatMode);
+    }
+
+    // НОВЫЙ МЕТОД: обновление интервалов громкости для трека
+    async updateVolumeIntervals(trackId, intervals) {
+        if (this.currentTrack && this.currentTrack.id === trackId) {
+            this.currentVolumeIntervals = intervals;
+            this.activeVolumeInterval = null;
+            this.checkAndUpdateVolume();
+        }
+        await this.db.setVolumeIntervals(trackId, intervals);
     }
 
     initAudioContext() {
