@@ -30,7 +30,7 @@
 ## Как использовать
 
 0. Скачайте по ссылке: https://github.com/TheSamoanThor/test-frontend-music-app/releases/latest
-1. Откройте `index.html` в современном браузере (Chrome, Edge, Opera рекомендуются для полной поддержки File System Access).
+1. Откройте `index.html` в современном браузере (Chrome, Edge, Opera рекомендуются для полной поддержки File System Access и других API).
 2. Нажмите **«Выбрать папку с музыкой»** и укажите папку с аудиофайлами. Приложение просканирует её рекурсивно и добавит все поддерживаемые аудиофайлы в библиотеку.  
    *Примечание:* Если ваш браузер не поддерживает выбор папки, будет предложено выбрать файлы по одному (через стандартное окно).
 3. После загрузки библиотеки вы увидите список треков. Используйте фильтр по тегам (вводите теги через запятую) и поиск по названию для быстрого поиска.
@@ -110,7 +110,7 @@ I did not write these libraries; full credit goes to their respective authors.
 ## How to Use
 
 0. Download on https://github.com/TheSamoanThor/test-frontend-music-app/releases/latest 
-1. Open `index.html` in a modern browser (Chrome, Edge, Opera recommended for full File System Access support).
+1. Open `index.html` in a modern browser (Chrome, Edge, Opera recommended for full File System Access support and other APIs).
 2. Click **"Select music folder"** and choose a folder containing audio files. The app will scan it recursively and add all supported audio files to the library.  
    *Note:* If your browser does not support folder selection, you will be prompted to pick files individually.
 3. Once the library is loaded, you'll see a list of tracks. Use the tag filter (enter tags separated by commas) and the name search to quickly find tracks.
