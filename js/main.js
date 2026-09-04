@@ -94,10 +94,10 @@
         if (e.target.matches('input, textarea, select')) return;
 
         switch (e.code) {
-            case 'Space':
-                e.preventDefault();
-                player.togglePlay();
-                break;
+            // case 'Space':
+            //     e.preventDefault();
+            //     player.togglePlay();
+            //     break;
             case 'ArrowLeft':
                 e.preventDefault();
                 player.prev(true);

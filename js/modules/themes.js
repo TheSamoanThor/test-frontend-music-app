@@ -47,7 +47,7 @@ var ThemeManager = class ThemeManager {
                 '--player-bg': '#3e2a4d',
                 '--hover-bg': '#6a4e7a'
             },
-            'green': {
+            'orange': {
                 '--bg-color': '#e8f5e9',
                 '--text-color': '#1b5e20',
                 '--primary-color': '#2e7d32',
@@ -56,7 +56,7 @@ var ThemeManager = class ThemeManager {
                 '--player-bg': '#c8e6c9',
                 '--hover-bg': '#a5d6a7'
             },
-            'orange': {
+            'green': {
                 '--bg-color': '#fff3e0',
                 '--text-color': '#bf360c',
                 '--primary-color': '#f57c00',
@@ -100,6 +100,15 @@ var ThemeManager = class ThemeManager {
                 '--border-color': '#93a1a1',
                 '--player-bg': '#eee8d5',
                 '--hover-bg': '#586e75'
+            },
+            too_light: {
+                '--bg-color': '#000000',
+                '--text-color': '#000000',
+                '--primary-color': '#000000',
+                '--secondary-bg': '#000000',
+                '--border-color': '#000000',
+                '--player-bg': '#000000',
+                '--hover-bg': '#000000'
             }
         };
         this.currentPreset = 'light';

@@ -29,11 +29,11 @@ const Router = {
                 document.getElementById('page-library').classList.remove('hidden');
                 this.ui.renderLibrary();
                 break;
-            case 'queue':
+            case 'playlists':
                 document.getElementById('page-queue').classList.remove('hidden');
                 this.ui.renderQueue(this.player.queue);
                 break;
-            case 'playlists':
+            case 'queue':
                 document.getElementById('page-playlists').classList.remove('hidden');
                 this.ui.renderPlaylists();
                 break;
