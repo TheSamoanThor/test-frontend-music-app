@@ -84,7 +84,7 @@ var UI = class UI {
 
         document.getElementById('skip-forward-10').addEventListener('click', (e) => {
             e.stopPropagation();
-            this.player.skip(100);
+            this.player.skip(10);
         });
 
         document.getElementById('repeat-btn').addEventListener('click', (e) => {
