@@ -276,6 +276,14 @@ h2 {
 .playlist-controls {
     margin-bottom: 1rem;
 }
+#create-playlist {
+    max-width: 800px;
+    width: 80%;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+    display: block;
+}
 .primary-btn {
     padding: 0.5rem 1rem;
     background-color: var(--primary-color);
@@ -1303,6 +1311,11 @@ input[type="checkbox"]:focus {
     .track-item, .queue-item, .playlist-item {
         padding: 0.5rem;
     }
+    .track-item {
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
+    }
     .track-item button, .queue-item button, .excluded-item button, .playlist-item button {
         padding: 0.4rem 0.6rem;
         font-size: 0.8rem;
@@ -1323,6 +1336,9 @@ input[type="checkbox"]:focus {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.3rem;
+        width: 90%;
+        margin-left: auto;
+        margin-right: auto;
     }
     .queue-item span {
         width: 100%;
@@ -1414,6 +1430,53 @@ input[type="checkbox"]:focus {
     }
     #select-music-btn {
         display: none;
+    }
+    /* Стили ТОЛЬКО для верхнего блока управления всей очередью */
+    main .queue-controls {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 0.5rem;
+        width: 80%; 
+        margin: 10px auto; 
+        padding: 0;
+    }
+
+    /* Стили для кнопок ТОЛЬКО в верхнем блоке */
+    main .queue-controls > button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;       
+        padding: 0.6rem;   
+        font-size: 0.85rem;
+        white-space: nowrap;
+        margin: 0;         
+    }
+
+    /* Растягиваем длинную кнопку плейлиста на обе колонки */
+    #save-queue-as-playlist {
+        grid-column: span 2;
+    }
+
+    /* Восстанавливаем стили для кнопок действий внутри самого трека */
+    .queue-item .queue-controls {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: space-between; /* Равномерно распределяет кнопки по ширине */
+        width: 100%;                     /* Заставляет блок кнопок занять всю ширину трека */
+        margin: 10px 0 0 0;
+        gap: 0.5rem;
+    }
+
+    .queue-item .queue-controls button {
+        flex: 1;                         /* Делает все кнопки одинаковой ширины, деля пространство поровну */
+        max-width: 1000px;                 /* Ограничиваем максимальную ширину, чтобы кнопки не были слишком гигантскими */
+        height: 40px;                    /* Компактная высота для мобильных */
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 }
 
@@ -1898,4 +1961,46 @@ body.nav-right .toolbar > #theme-select {
 #interval-end, #interval-start {
         padding: 0.4rem 0.6rem;
         box-sizing: border-box;
-    }
+ }
+
+/* ========== СТРАНИЦА «СВОЙ СЕРВЕР» ========== */
+.server-status {
+    padding: 0.75rem 1rem;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    transition: background-color 0.2s;
+}
+.server-status-checking {
+    background-color: var(--secondary-bg);
+    color: var(--text-color);
+}
+.server-status-online {
+    background-color: rgba(40, 167, 69, 0.15);
+    border-color: #28a745;
+    color: var(--text-color);
+}
+.server-status-offline {
+    background-color: rgba(220, 53, 69, 0.12);
+    border-color: #dc3545;
+    color: var(--text-color);
+}
+#page-server code {
+    background-color: var(--secondary-bg);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-family: monospace;
+    border: 1px solid var(--border-color);
+}
+#server-search-btn,
+#server-radio-btn {
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}

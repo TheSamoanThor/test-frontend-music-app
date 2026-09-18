@@ -121,6 +121,13 @@
             <symbol id="icon-edit" viewBox="0 0 24 24">
                 <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
             </symbol>
+            <!-- Сервер -->
+            <symbol id="icon-server" viewBox="0 0 24 24">
+                <path d="M4 1h16c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2zm0 2v4h16V3H4zm0 6h16c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2zm0 2v4h16v-4H4zm0 6h16c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2v-4c0-1.1.9-2 2-2zm0 2v4h16v-4H4z"/>
+                <circle cx="6.5" cy="4" r="0.8"/>
+                <circle cx="6.5" cy="12" r="0.8"/>
+                <circle cx="6.5" cy="20" r="0.8"/>
+            </symbol>
         </defs>
     </svg>
 
@@ -142,6 +149,9 @@
                     </button>
                     <button class="nav-btn" data-page="archive">
                         <svg class="icon"><use href="#icon-archive"></use></svg> Archive.org
+                    </button>
+                    <button class="nav-btn" data-page="server">
+                        <svg class="icon"><use href="#icon-server"></use></svg> СвойСервер
                     </button>
                     <button class="nav-btn" data-page="settings">
                         <svg class="icon"><use href="#icon-settings"></use></svg> Настройки
@@ -226,6 +236,20 @@
                     <button id="archive-radio-btn">Радио</button>
                 </div>
                 <div id="archive-results" class="track-list"></div>
+            </div>
+
+            <!-- Страница своего сервера -->
+            <div class="page" id="page-server">
+                <h2><svg class="icon"><use href="#icon-server"></use></svg> Свой сервер</h2>
+                <div id="server-status" class="server-status">Проверка соединения с сервером...</div>
+                <div class="search-bar">
+                    <input type="text" id="server-search-input" placeholder="Поиск музыки на своём сервере...">
+                    <button id="server-search-btn">Найти</button>
+                    <button id="server-radio-btn">Радио</button>
+                </div>
+                <div id="server-results" class="track-list">
+                    <div>Подключитесь к своему серверу, чтобы увидеть треки.</div>
+                </div>
             </div>
 
             <!-- Страница настроек -->
@@ -428,6 +452,7 @@
     <script src="js/modules/fileHandler.js"></script>
     <script src="js/modules/player.js"></script>
     <script src="js/modules/themes.js"></script>
+    <script src="js/modules/serverApi.js"></script>
     <script src="js/modules/ui.js"></script>
     <script src="js/modules/dragDrop.js"></script>
     <script src="js/modules/archiveApi.js"></script>

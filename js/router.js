@@ -53,6 +53,10 @@ const Router = {
                     this.navigate('library');
                 }
                 break;
+            case 'server':
+                document.getElementById('page-server').classList.remove('hidden');
+                this.ui.renderServerPage();
+                break;
             default:
                 document.getElementById('page-library').classList.remove('hidden');
                 if (activeBtn) activeBtn.classList.remove('active');

@@ -204,6 +204,22 @@ var UI = class UI {
 
         document.getElementById('switch-to-file-picker')?.addEventListener('click', () => this.switchToFilePickerMode());
         document.getElementById('switch-to-folder-picker')?.addEventListener('click', () => this.switchToFolderPickerMode());
+
+        // ===== Свой сервер =====
+        const serverSearchBtn = document.getElementById('server-search-btn');
+        if (serverSearchBtn) {
+            serverSearchBtn.addEventListener('click', () => this.serverSearch());
+        }
+        const serverRadioBtn = document.getElementById('server-radio-btn');
+        if (serverRadioBtn) {
+            serverRadioBtn.addEventListener('click', () => this.serverRadio());
+        }
+        const serverSearchInput = document.getElementById('server-search-input');
+        if (serverSearchInput) {
+            serverSearchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.serverSearch();
+            });
+        }
     }
 
     async initLibraryClickBehavior() {
@@ -2325,5 +2341,120 @@ var UI = class UI {
                 this.refreshIntervalList(intervals);
             });
         });
+    }
+
+    // ========== СВОЙ СЕРВЕР ==========
+
+    /**
+     * Рендер страницы «Свой сервер».
+     * Вызывается роутером при переходе на #server.
+     */
+    async renderServerPage() {
+        const statusEl = document.getElementById('server-status');
+        const resultsEl = document.getElementById('server-results');
+
+        if (!statusEl) return;
+
+        // Показываем «проверка...»
+        statusEl.textContent = 'Проверка соединения с сервером...';
+        statusEl.className = 'server-status server-status-checking';
+
+        // Логируем открытие страницы (тихо, если сервер недоступен)
+        ServerApi.log('server_page_open', { hash: window.location.hash });
+
+        const ok = await ServerApi.healthCheck(true);
+
+        if (ok) {
+            statusEl.textContent = 'Сервер доступен: ' + ServerApi.baseUrl;
+            statusEl.className = 'server-status server-status-online';
+            await this.loadServerTracks();
+        } else {
+            statusEl.textContent = 'Сервер недоступен. Работаем в автономном режиме (IndexedDB).';
+            statusEl.className = 'server-status server-status-offline';
+            if (resultsEl) {
+                resultsEl.innerHTML = '<div>Сервер не запущен. Запустите <code>run_server.bat</code> (Windows) или <code>./run_server.sh</code> (Linux/macOS), чтобы получить доступ к трекам на сервере.</div>';
+            }
+        }
+    }
+
+    /**
+     * Загрузить и отрисовать треки с сервера.
+     */
+    async loadServerTracks() {
+        const resultsEl = document.getElementById('server-results');
+        if (!resultsEl) return;
+
+        resultsEl.innerHTML = '<div>Загрузка треков с сервера...</div>';
+        const tracks = await ServerApi.getTracks();
+
+        if (!tracks.length) {
+            resultsEl.innerHTML = '<div>На сервере пока нет треков.</div>';
+            return;
+        }
+
+        resultsEl.innerHTML = '';
+        for (let track of tracks) {
+            const li = document.createElement('li');
+            li.className = 'track-item';
+            li.innerHTML = `
+                <span><strong>${utils.escapeHtml(track.name || 'Без названия')}</strong> (${utils.formatTime(track.duration || 0)})</span>
+                <div class="track-tags">Источник: ${utils.escapeHtml(track.source || 'server')}</div>
+                <div>
+                    <button class="server-add-to-queue" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
+                    <button class="server-play-now" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
+                </div>
+            `;
+            resultsEl.appendChild(li);
+        }
+
+        resultsEl.querySelectorAll('.server-add-to-queue').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const track = tracks.find(t => t.id === id);
+                if (track) {
+                    await this.player.addToQueue([track]);
+                    this.showToast('Трек добавлен в очередь', 'success');
+                }
+            });
+        });
+        resultsEl.querySelectorAll('.server-play-now').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const track = tracks.find(t => t.id === id);
+                if (track) {
+                    await this.player.playNow(track);
+                }
+            });
+        });
+    }
+
+    /**
+     * Поиск на сервере (заглушка + лог на сервер).
+     */
+    async serverSearch() {
+        const input = document.getElementById('server-search-input');
+        const query = input ? input.value.trim() : '';
+        ServerApi.log('server_search', { query });
+
+        if (!ServerApi.isAvailable()) {
+            this.showToast('Сервер недоступен. Запустите сервер, чтобы искать музыку.', 'error');
+            return;
+        }
+        // TODO: реальный поиск на сервере появится в следующих итерациях
+        this.showToast(`Поиск "${query}" на сервере пока не реализован`, 'info');
+    }
+
+    /**
+     * Радио на сервере (заглушка + лог).
+     */
+    async serverRadio() {
+        ServerApi.log('server_radio_click', {});
+        if (!ServerApi.isAvailable()) {
+            this.showToast('Сервер недоступен. Запустите сервер, чтобы слушать радио.', 'error');
+            return;
+        }
+        this.showToast('Радио на своём сервере пока не реализовано', 'info');
     }
 };
