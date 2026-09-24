@@ -154,6 +154,9 @@ h2 {
     background-color: var(--bg-color);
     color: var(--text-color);
 }
+.search-bar {
+    margin-top: 1rem;
+}
 .filter-bar button {
     padding: 0.5rem 1rem;
     background-color: var(--primary-color);
@@ -1968,7 +1971,7 @@ body.nav-right .toolbar > #theme-select {
     padding: 0.75rem 1rem;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     font-size: 0.95rem;
     transition: background-color 0.2s;
 }

@@ -1,6 +1,8 @@
 (async () => {
     const db = new Database();
     await db.init();
+    ServerApi.attachDb(db);
+    await ServerApi.loadBaseUrl();
 
     const fileHandler = new FileHandler(db);
     if (!fileHandler.isFileSystemAccessSupported) {

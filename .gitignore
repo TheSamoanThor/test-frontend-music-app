@@ -20,3 +20,8 @@ TODO.txt
 
 # file for importing my songs)
 music-player-backup.json
+*.db
+music.db
+/music
+*.sqlite
+*.db

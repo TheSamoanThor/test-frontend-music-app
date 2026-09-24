@@ -220,6 +220,45 @@ var UI = class UI {
                 if (e.key === 'Enter') this.serverSearch();
             });
         }
+
+                // ===== Настройки сервера =====
+        const serverUrlSave = document.getElementById('server-url-save');
+        if (serverUrlSave) {
+            serverUrlSave.addEventListener('click', () => this.saveServerUrl());
+        }
+        const serverUrlCheck = document.getElementById('server-url-check');
+        if (serverUrlCheck) {
+            serverUrlCheck.addEventListener('click', () => this.checkServerConnection());
+        }
+        const serverLogEnabled = document.getElementById('server-log-enabled');
+        if (serverLogEnabled) {
+            serverLogEnabled.addEventListener('change', async (e) => {
+                const enabled = e.target.checked;
+                await this.db.setSetting('server_log_enabled', enabled);
+                if (ServerApi.isAvailable()) {
+                    await ServerApi.setLogConfig(enabled);
+                }
+                this.showToast(`Логирование на сервере ${enabled ? 'включено' : 'выключено'}`, 'success');
+            });
+        }
+        const syncUploadBtn = document.getElementById('sync-upload-btn');
+        if (syncUploadBtn) syncUploadBtn.addEventListener('click', () => this.syncUploadToServer());
+        const syncDownloadBtn = document.getElementById('sync-download-btn');
+        if (syncDownloadBtn) syncDownloadBtn.addEventListener('click', () => this.syncDownloadFromServer());
+        const uploadMusicBtn = document.getElementById('server-upload-music-btn');
+        if (uploadMusicBtn) uploadMusicBtn.addEventListener('click', () => this.uploadMusicToServer());
+        const scanBtn = document.getElementById('server-scan-btn');
+        if (scanBtn) scanBtn.addEventListener('click', () => this.scanServerMusic());
+
+        // На странице «Свой сервер»
+        const pageUpload = document.getElementById('server-page-upload-btn');
+        if (pageUpload) pageUpload.addEventListener('click', () => this.uploadMusicToServer());
+        const pageScan = document.getElementById('server-page-scan-btn');
+        if (pageScan) pageScan.addEventListener('click', () => this.scanServerMusic());
+        const pageSyncUp = document.getElementById('server-page-sync-upload');
+        if (pageSyncUp) pageSyncUp.addEventListener('click', () => this.syncUploadToServer());
+        const pageSyncDown = document.getElementById('server-page-sync-download');
+        if (pageSyncDown) pageSyncDown.addEventListener('click', () => this.syncDownloadFromServer());
     }
 
     async initLibraryClickBehavior() {
@@ -644,7 +683,9 @@ var UI = class UI {
         this.syncFilterInput();
         this.showSkeleton('track-list', 10);
         const allTracks = await this.db.getAllTracks();
-        let filtered = allTracks;
+        // В основной библиотеке показываем только локальные и archive-треки.
+        // Треки с сервера живут на вкладке «Свой сервер».
+        let filtered = allTracks.filter(t => t.source !== 'server');
 
         if (this.currentFilterTags.length > 0) {
             const trackTagPromises = allTracks.map(async track => ({
@@ -1054,6 +1095,7 @@ var UI = class UI {
     }
 
     async syncSettingsPage() {
+        await this.loadServerSettingsIntoUI();
         const preset = await this.db.getSetting('theme-preset') || 'light';
         const color = await this.db.getSetting('theme-custom-color') || '#4a90e2';
 
@@ -2375,6 +2417,256 @@ var UI = class UI {
                 resultsEl.innerHTML = '<div>Сервер не запущен. Запустите <code>run_server.bat</code> (Windows) или <code>./run_server.sh</code> (Linux/macOS), чтобы получить доступ к трекам на сервере.</div>';
             }
         }
+        
+        await this.loadServerSettingsIntoUI();
+    }
+
+    // ========== НАСТРОЙКИ СЕРВЕРА ==========
+
+    async loadServerSettingsIntoUI() {
+        const input = document.getElementById('server-url-input');
+        if (input) input.value = ServerApi.baseUrl;
+
+        const logCheckbox = document.getElementById('server-log-enabled');
+        if (logCheckbox) {
+            const saved = await this.db.getSetting('server_log_enabled');
+            logCheckbox.checked = saved === true;
+        }
+        this.updateServerStatusBadge();
+    }
+
+    updateServerStatusBadge() {
+        const badge = document.getElementById('server-url-status');
+        if (!badge) return;
+        if (ServerApi.isAvailable()) {
+            badge.textContent = 'Сервер доступен';
+            badge.className = 'server-status server-status-online';
+        } else if (ServerApi._available === false) {
+            badge.textContent = 'Сервер недоступен';
+            badge.className = 'server-status server-status-offline';
+        } else {
+            badge.textContent = 'Не проверено';
+            badge.className = 'server-status server-status-checking';
+        }
+    }
+
+    /** Нормализация URL: добавляет http:// для локалхоста, https:// для остальных. */
+    normalizeServerUrl(raw) {
+        if (!raw) return null;
+        let s = raw.trim();
+        if (!s) return null;
+        // Если схема уже есть — проверяем как есть
+        if (/^https?:\/\//i.test(s)) {
+            try { new URL(s); return s.replace(/\/+$/, ''); }
+            catch { return null; }
+        }
+        // Определяем схему
+        const isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(s);
+        const scheme = isLocal ? 'http://' : 'https://';
+        const candidate = scheme + s;
+        try {
+            const u = new URL(candidate);
+            return u.origin + (u.pathname !== '/' ? u.pathname.replace(/\/+$/, '') : '');
+        } catch {
+            return null;
+        }
+    }
+
+    async saveServerUrl() {
+        const input = document.getElementById('server-url-input');
+        if (!input) return;
+        const raw = input.value;
+        const normalized = this.normalizeServerUrl(raw);
+        if (!normalized) {
+            Modal.alert('Некорректный URL. Пример: localhost:8000 или https://example.com', 'Ошибка');
+            return;
+        }
+        if (normalized === ServerApi.baseUrl) {
+            this.showToast('Адрес не изменился', 'info');
+            return;
+        }
+        const ok = await Modal.confirm(
+            `Изменить адрес сервера?\n\nБыло: ${ServerApi.baseUrl}\nСтанет: ${normalized}`,
+            'Подтверждение'
+        );
+        if (!ok) {
+            input.value = ServerApi.baseUrl;
+            return;
+        }
+        await ServerApi.setBaseUrl(normalized);
+        input.value = normalized;
+        ServerApi._available = null;
+        this.updateServerStatusBadge();
+        this.showToast('Адрес сервера сохранён', 'success');
+        // Проверяем соединение и обновляем статус
+        await this.checkServerConnection();
+    }
+
+    async checkServerConnection() {
+        const badge = document.getElementById('server-url-status');
+        if (badge) {
+            badge.textContent = 'Проверка...';
+            badge.className = 'server-status server-status-checking';
+        }
+        const ok = await ServerApi.healthCheck(true);
+        this.updateServerStatusBadge();
+        if (ok) {
+            // Сообщаем серверу о настройке логирования
+            const logEnabled = await this.db.getSetting('server_log_enabled');
+            await ServerApi.setLogConfig(logEnabled === true);
+            this.showToast('Сервер доступен', 'success');
+        } else {
+            this.showToast('Сервер недоступен', 'error');
+        }
+        return ok;
+    }
+
+    // ========== СИНХРОНИЗАЦИЯ ==========
+
+    /** Локальные данные -> на сервер. */
+    async syncUploadToServer() {
+        if (!ServerApi.isAvailable()) {
+            const ok = await this.checkServerConnection();
+            if (!ok) {
+                Modal.alert('Сервер недоступен', 'Ошибка');
+                return;
+            }
+        }
+        const confirmed = await Modal.confirm(
+            'Выгрузить локальные данные (теги, плейлисты, очередь, интервалы, настройки) на сервер?\n\n' +
+            'Треки с локального устройства НЕ выгружаются — только данные библиотеки сервера.\n' +
+            'Данные на сервере будут перезаписаны.',
+            'Подтверждение'
+        );
+        if (!confirmed) return;
+
+        const localData = await this.db.exportData();
+        // На сервер отправляем только треки, которые уже лежат на сервере.
+        // Локальные файлы браузера на сервер не переносятся.
+        const serverTracks = (localData.tracks || []).filter(t => t.source === 'server');
+
+        const payload = {
+            tracks: serverTracks,
+            queue: localData.queue || [],
+            settings: localData.settings || [],
+            tags: localData.tags || [],
+            tagVolumes: localData.tagVolumes || [],
+            playlists: localData.playlists || [],
+            volumeIntervals: localData.volumeIntervals || []
+        };
+        const ok = await ServerApi.backupImport(payload);
+        if (ok) {
+            this.showToast('Данные выгружены на сервер', 'success');
+        } else {
+            Modal.alert('Не удалось выгрузить данные', 'Ошибка');
+        }
+    }
+
+    /** Данные с сервера -> локально. */
+    async syncDownloadFromServer() {
+        if (!ServerApi.isAvailable()) {
+            const ok = await this.checkServerConnection();
+            if (!ok) {
+                Modal.alert('Сервер недоступен', 'Ошибка');
+                return;
+            }
+        }
+        const confirmed = await Modal.confirm(
+            'Загрузить данные с сервера?\n\nЛокальная библиотека, теги, плейлисты и настройки будут ПЕРЕЗАПИСАНЫ.',
+            'Подтверждение'
+        );
+        if (!confirmed) return;
+
+        const remote = await ServerApi.backupExport();
+        if (!remote) {
+            Modal.alert('Не удалось получить данные с сервера', 'Ошибка');
+            return;
+        }
+        // Нормализуем к формату IndexedDB
+        const dataForLocal = {
+            tracks: (remote.tracks || [])
+                .filter(t => t.source === 'server')
+                .map(t => {
+                    const { created_at, archive_id, stream_url, ...rest } = t;
+                    const obj = { ...rest };
+                    if (archive_id) obj.archiveId = archive_id;
+                    if (stream_url) {
+                        obj.streamUrl = stream_url.startsWith('/')
+                            ? ServerApi.baseUrl + stream_url
+                            : stream_url;
+                    }
+                    return obj;
+                }),
+            queue: remote.queue || [],
+            settings: remote.settings || [],
+            tags: remote.tags || [],
+            tagVolumes: remote.tagVolumes || [],
+            playlists: (remote.playlists || []).map(p => ({
+                id: p.id, name: p.name, tracks: p.tracks || []
+            })),
+            volumeIntervals: (remote.volumeIntervals || []).map(v => ({
+                trackId: v.trackId || v.track_id,
+                intervals: v.intervals || []
+            }))
+        };
+        await this.db.importData(dataForLocal);
+        await this.player.loadQueue();
+        await this.renderLibrary();
+        await this.renderPlaylists();
+        await this.syncSettingsPage();
+        await this.loadServerSettingsIntoUI();
+        this.showToast('Данные загружены с сервера', 'success');
+    }
+
+    // ========== РАБОТА С МУЗЫКОЙ НА СЕРВЕРЕ ==========
+
+    /** Открывает проводник и загружает выбранные файлы на сервер. */
+    async uploadMusicToServer() {
+        if (!ServerApi.isAvailable()) {
+            const ok = await this.checkServerConnection();
+            if (!ok) {
+                Modal.alert('Сервер недоступен', 'Ошибка');
+                return;
+            }
+        }
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'audio/*';
+        input.multiple = true;
+        input.onchange = async (e) => {
+            const files = Array.from(e.target.files);
+            if (!files.length) return;
+            this.showToast(`Загрузка ${files.length} файлов...`, 'info');
+            const result = await ServerApi.uploadFiles(files);
+            if (result && result.ok) {
+                this.showToast(`Загружено файлов: ${result.added.length}`, 'success');
+                if (window.location.hash.startsWith('#server')) {
+                    await this.loadServerTracks();
+                }
+            } else {
+                Modal.alert('Не удалось загрузить файлы', 'Ошибка');
+            }
+        };
+        input.click();
+    }
+
+    async scanServerMusic() {
+        if (!ServerApi.isAvailable()) {
+            const ok = await this.checkServerConnection();
+            if (!ok) {
+                Modal.alert('Сервер недоступен', 'Ошибка');
+                return;
+            }
+        }
+        const result = await ServerApi.scanMusic();
+        if (result && result.ok) {
+            this.showToast(`Добавлено треков: ${result.added}`, 'success');
+            if (window.location.hash.startsWith('#server')) {
+                await this.loadServerTracks();
+            }
+        } else {
+            Modal.alert('Не удалось пересканировать', 'Ошибка');
+        }
     }
 
     /**
@@ -2402,6 +2694,7 @@ var UI = class UI {
                 <div>
                     <button class="server-add-to-queue" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
                     <button class="server-play-now" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
+                    <button class="server-delete" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить с сервера</button>
                 </div>
             `;
             resultsEl.appendChild(li);
@@ -2412,10 +2705,14 @@ var UI = class UI {
                 e.stopPropagation();
                 const id = btn.dataset.id;
                 const track = tracks.find(t => t.id === id);
-                if (track) {
-                    await this.player.addToQueue([track]);
-                    this.showToast('Трек добавлен в очередь', 'success');
+                if (!track) return;
+                // Добавляем в локальную БД только если трека там ещё нет
+                const existing = await this.db.getTrack(track.id);
+                if (!existing) {
+                    await this.db.addTrack(track);
                 }
+                await this.player.addToQueue([track]);
+                this.showToast('Трек добавлен в очередь', 'success');
             });
         });
         resultsEl.querySelectorAll('.server-play-now').forEach(btn => {
@@ -2423,8 +2720,30 @@ var UI = class UI {
                 e.stopPropagation();
                 const id = btn.dataset.id;
                 const track = tracks.find(t => t.id === id);
-                if (track) {
-                    await this.player.playNow(track);
+                if (!track) return;
+                const existing = await this.db.getTrack(track.id);
+                if (!existing) {
+                    await this.db.addTrack(track);
+                }
+                await this.player.playNow(track);
+            });
+        });
+        resultsEl.querySelectorAll('.server-delete').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = btn.dataset.id;
+                const track = tracks.find(t => t.id === id);
+                if (!track) return;
+                const ok = await Modal.confirm(`Удалить трек "${track.name}" с сервера?`, 'Подтверждение');
+                if (!ok) return;
+                const deleted = await ServerApi.deleteTrack(id);
+                if (deleted) {
+                    // Заодно удаляем из локальной БД, если трек там был
+                    await this.db.deleteTrack(id);
+                    this.showToast('Трек удалён с сервера', 'success');
+                    await this.loadServerTracks();
+                } else {
+                    Modal.alert('Не удалось удалить трек', 'Ошибка');
                 }
             });
         });

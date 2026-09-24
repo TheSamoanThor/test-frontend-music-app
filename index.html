@@ -247,6 +247,12 @@
                     <button id="server-search-btn">Найти</button>
                     <button id="server-radio-btn">Радио</button>
                 </div>
+                <div class="setting-item" style="margin-bottom:0.5rem;">
+                    <button id="server-page-upload-btn">Загрузить музыку на сервер</button>
+                    <button id="server-page-scan-btn">Пересканировать music/</button>
+                    <button id="server-page-sync-upload">Выгрузить данные на сервер</button>
+                    <button id="server-page-sync-download">Загрузить данные с сервера</button>
+                </div>
                 <div id="server-results" class="track-list">
                     <div>Подключитесь к своему серверу, чтобы увидеть треки.</div>
                 </div>
@@ -298,6 +304,33 @@
                     <div class="setting-item">
                         <button id="switch-to-file-picker">Переключиться на выбор файлов (очистить библиотеку)</button>
                         <button id="switch-to-folder-picker">Переключиться на выбор папки (очистить библиотеку)</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>Свой сервер</h3>
+                    <div class="setting-item">
+                        <label for="server-url-input">Адрес сервера:</label>
+                        <input type="text" id="server-url-input" class="modal-input"
+                               placeholder="localhost:8000" style="flex:1;">
+                        <button id="server-url-save">Сохранить</button>
+                    </div>
+                    <div class="setting-item">
+                        <button id="server-url-check">Проверить соединение</button>
+                        <span id="server-url-status" class="server-status-checking"
+                              style="padding:0.3rem 0.6rem; border-radius:6px;"></span>
+                    </div>
+                    <div class="setting-item">
+                        <label for="server-log-enabled">Сохранять логи в текстовый файл на сервере:</label>
+                        <input type="checkbox" id="server-log-enabled">
+                    </div>
+                    <div class="setting-item">
+                        <button id="sync-upload-btn">Выгрузить локальные данные на сервер</button>
+                        <button id="sync-download-btn">Загрузить данные с сервера</button>
+                    </div>
+                    <div class="setting-item">
+                        <button id="server-upload-music-btn">Загрузить музыку на сервер</button>
+                        <button id="server-scan-btn">Пересканировать music/ на сервере</button>
                     </div>
                 </div>
 
