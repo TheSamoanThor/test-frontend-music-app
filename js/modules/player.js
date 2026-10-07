@@ -63,10 +63,34 @@ var Player = class Player {
             }
         });
 
-        this.audio.addEventListener('error', (e) => {
-            console.error('Audio error', e);
+        this.audio.addEventListener('error', async (e) => {
+            const error = this.audio.error;
+            console.error('Audio playback error:', error);
+
+            // Код 2 — MEDIA_ERR_NETWORK (проблемы с интернетом при стриминге)
+            if (error && error.code === 2) {
+                if (this.currentTrack && (this.currentTrack.streamUrl || this.currentTrack.source === 'archive')) {
+                    console.warn('Сетевой сбой стриминга. Пробуем переподключиться через 3 секунды...');
+                    
+                    if (this.ui) this.ui.showToast('Проблемы с сетью. Восстановление соединения...', 'info');
+                    
+                    setTimeout(() => {
+                        if (this.isPlaying && this.audio) {
+                            const currentTime = this.audio.currentTime;
+                            this.audio.load();
+                            this.audio.currentTime = currentTime;
+                            this.audio.play().catch(err => console.warn('Ошибка авто-воспроизведения при восстановлении:', err));
+                        }
+                    }, 3000);
+                    return; // Выходим, не удаляя трек из очереди!
+                }
+            }
+
+            // Если ошибка критическая (файл поврежден или удален), то переключаем
+            if (this.ui) this.ui.showToast('Не удалось воспроизвести файл', 'error');
             this.next(true);
         });
+
 
         this.audio.addEventListener('play', () => {
             this.isPlaying = true;

@@ -182,7 +182,7 @@ class BackupIn(BaseModel):
 
 
 # ====================== ПРИЛОЖЕНИЕ ======================
-app = FastAPI(title="Music Player Local Server", version="0.2.0")
+app = FastAPI(title="Music Player Local Server", version="0.2.5")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

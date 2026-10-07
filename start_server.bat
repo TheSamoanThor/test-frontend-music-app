@@ -9,7 +9,7 @@ REM Проверяем Python
 python --version >nul 2>&1
 if errorlevel 1 (
     echo [ОШИБКА] Python не найден в PATH.
-    echo Установите Python 3.10+ с https://www.python.org/downloads/
+    echo Установите Python 3.10+ с https://python.org
     pause
     exit /b 1
 )
@@ -23,9 +23,17 @@ if not exist "venv" (
 REM Активируем venv
 call venv\Scripts\activate.bat
 
-REM Устанавливаем зависимости (тихо, если уже стоят)
-echo [SETUP] Проверяю зависимости...
-pip install -q -r requirements.txt
+REM Обновляем pip до актуальной версии
+echo [SETUP] Обновляю pip...
+python -m pip install --upgrade pip
+
+@REM  REM Устанавливаем зависимости из файла requirements.txt
+@REM  echo [SETUP] Устанавливаем зависимости...
+@REM  pip install -r requirements.txt
+
+REM Устанавливаем зависимости в обход строгой проверки SSL-сертификатов
+echo [SETUP] Устанавливаем зависимости в обход SSL...
+pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
 
 REM Запускаем сервер
 echo.

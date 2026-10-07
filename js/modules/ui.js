@@ -1684,13 +1684,17 @@ var UI = class UI {
                         await this.db.deletePlaylist(pl.id);
                         delete this.playlistOpenState[pl.id];
                         this.showToast(`Плейлист "${pl.name}" удалён`, 'success');
+                        
+                        // КРИТИЧНО: Перерисовываем интерфейс и ЖЕСТКО прерываем текущий цикл выполнения
                         await this.renderPlaylists();
+                        return; 
                     } catch (error) {
                         console.error('Ошибка удаления плейлиста:', error);
                         Modal.alert('Не удалось удалить плейлист', 'Ошибка');
                     }
                 }
             });
+
 
             if (this.playlistOpenState[pl.id]) {
                 const tracksDiv = plDiv.querySelector('.playlist-tracks');
@@ -2110,6 +2114,16 @@ var UI = class UI {
     }
 
     async deleteTrack(trackId) {
+        if (ServerAPI.isOnline) { // Если сервер онлайн
+            try {
+                await fetch(`http://localhost:8000/api/tracks/${trackId}`, {
+                    method: 'DELETE'
+                });
+            } catch (err) {
+                console.error("Не удалось удалить трек с сервера:", err);
+            }
+        }
+
         const track = await this.db.getTrack(trackId);
         if (!track) return;
 
