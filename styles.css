@@ -1,3 +1,8 @@
+/* =========================================================
+   MUSIC PLAYER — STYLES
+   ========================================================= */
+
+/* ---------- ПЕРЕМЕННЫЕ ТЕМЫ ---------- */
 :root {
     --bg-color: #f8f9fa;
     --text-color: #212529;
@@ -15,6 +20,7 @@
     --scrollbar-thumb-hover: var(--primary-color);
 }
 
+/* ---------- RESET ---------- */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -29,8 +35,10 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    overflow-x: hidden;
 }
 
+/* ---------- СКРОЛЛБАР ---------- */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -50,6 +58,7 @@ body {
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
+/* ---------- ОБЩИЙ КАРКАС ---------- */
 #app {
     display: flex;
     flex-direction: column;
@@ -62,7 +71,7 @@ header {
     padding: 0.75rem 1.5rem;
     box-shadow: var(--shadow);
     z-index: 10;
-    flex-shrink: 0; /* чтобы шапка не сжималась */
+    flex-shrink: 0;
 }
 
 .toolbar {
@@ -72,7 +81,9 @@ header {
     align-items: center;
     justify-content: space-evenly;
 }
-.toolbar button, .toolbar select, .toolbar input[type="color"] {
+.toolbar button,
+.toolbar select,
+.toolbar input[type="color"] {
     padding: 0.5rem 1rem;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
@@ -92,6 +103,7 @@ header {
     width: 50px;
     padding: 0.3rem;
 }
+
 .main-nav {
     display: flex;
     gap: 0.5rem;
@@ -141,12 +153,16 @@ h2 {
     align-items: center;
     gap: 0.5rem;
 }
-.filter-bar, .search-bar {
+
+/* ---------- ФИЛЬТРЫ/ПОИСК ---------- */
+.filter-bar,
+.search-bar {
     display: flex;
     gap: 0.5rem;
     margin-bottom: 1rem;
 }
-.filter-bar input, .search-bar input {
+.filter-bar input,
+.search-bar input {
     flex: 1;
     padding: 0.5rem;
     border: 1px solid var(--border-color);
@@ -165,7 +181,8 @@ h2 {
     border-radius: var(--border-radius);
     cursor: pointer;
 }
-/* Подсветка текущего трека в очереди и плейлистах */
+
+/* ---------- ПОДСВЕТКА ТЕКУЩЕГО ТРЕКА ---------- */
 .queue-item.current-track,
 .playlist-track-item.current-track {
     background-color: var(--primary-color);
@@ -198,11 +215,18 @@ h2 {
     background-color: white;
     color: var(--primary-color);
 }
-.track-list, .queue-list, .excluded-list, .playlists-list {
+
+/* ---------- СПИСКИ ТРЕКОВ ---------- */
+.track-list,
+.queue-list,
+.excluded-list,
+.playlists-list {
     list-style: none;
     overflow-y: auto;
 }
-.track-item, .queue-item, .playlist-item {
+.track-item,
+.queue-item,
+.playlist-item {
     background-color: var(--bg-color);
     border-radius: var(--border-radius);
     padding: 0.75rem;
@@ -210,7 +234,9 @@ h2 {
     border: 1px solid var(--border-color);
     transition: transform 0.1s;
 }
-.track-item:hover, .queue-item:hover, .playlist-item:hover {
+.track-item:hover,
+.queue-item:hover,
+.playlist-item:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow);
 }
@@ -235,7 +261,10 @@ h2 {
     background-color: var(--secondary-bg);
     color: var(--text-color);
 }
-.track-item button, .queue-item button, .excluded-item button, .playlist-item button {
+.track-item button,
+.queue-item button,
+.excluded-item button,
+.playlist-item button {
     padding: 0.3rem 0.6rem;
     border: none;
     border-radius: 4px;
@@ -248,7 +277,10 @@ h2 {
     align-items: center;
     gap: 0.2rem;
 }
-.track-item button:last-child, .queue-item button:last-child, .excluded-item button:last-child, .playlist-item button:last-child {
+.track-item button:last-child,
+.queue-item button:last-child,
+.excluded-item button:last-child,
+.playlist-item button:last-child {
     margin-right: 0;
 }
 .queue-item {
@@ -268,7 +300,7 @@ h2 {
     margin: 10px;
     justify-content: center;
 }
-.queue-controls button{
+.queue-controls button {
     padding: 0.5rem 1rem;
     background-color: var(--primary-color);
     color: white;
@@ -276,6 +308,8 @@ h2 {
     border-radius: var(--border-radius);
     cursor: pointer;
 }
+
+/* ---------- ПЛЕЙЛИСТЫ ---------- */
 .playlist-controls {
     margin-bottom: 1rem;
 }
@@ -331,6 +365,8 @@ h2 {
     padding: 0.2rem 0.5rem;
     font-size: 0.8rem;
 }
+
+/* ---------- POPUP (устаревший, оставлен для совместимости) ---------- */
 .popup {
     position: fixed;
     top: 0;
@@ -462,6 +498,8 @@ h2 {
     border-radius: var(--border-radius);
     cursor: pointer;
 }
+
+/* ---------- НАСТРОЙКИ ---------- */
 .settings-section {
     background-color: var(--secondary-bg);
     border: 1px solid var(--border-color);
@@ -528,7 +566,9 @@ h2 {
     background-color: var(--hover-bg);
 }
 
-/* ========== ПЛЕЕР (ФУТЕР) ========== */
+/* =========================================================
+   ПЛЕЕР (ФУТЕР) — БАЗОВЫЕ СТИЛИ (десктоп)
+   ========================================================= */
 .player-bar {
     background-color: var(--player-bg);
     border-top: 1px solid var(--border-color);
@@ -539,7 +579,7 @@ h2 {
     display: grid;
     align-items: center;
     gap: 0.5rem 1rem;
-    flex-shrink: 0; /* чтобы футер не сжимался */
+    flex-shrink: 0;
 }
 .player-cover {
     width: 50px;
@@ -617,7 +657,7 @@ h2 {
     min-width: 120px;
 }
 
-/* Широкие экраны (≥769px) – сетка с центрированием */
+/* Десктопная сетка плеера */
 @media (min-width: 769px) {
     .player-bar {
         grid-template-columns: auto 1fr auto auto auto auto auto auto 1fr auto;
@@ -659,78 +699,21 @@ h2 {
         width: 100%;
         margin: 0;
     }
-    #skip-back-10 { 
-        grid-column: 3; 
-        grid-row: 1; 
+    #skip-back-10 {
+        grid-column: 3;
+        grid-row: 1;
     }
-    #skip-forward-10 { 
-        grid-column: 7; 
-        grid-row: 1; 
+    #skip-forward-10 {
+        grid-column: 7;
+        grid-row: 1;
     }
-    #repeat-btn { 
-        grid-column: 8; 
-        grid-row: 1; 
-    }
-}
-
-@media (max-width: 768px) {
-    .player-bar {
-        position: sticky;
-        bottom: 0;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.25rem;
-        padding: 0.75rem;
-        background-color: var(--player-bg);
-        z-index: 100;
-    }
-    .player-cover {
-        width: 44px;
-        height: 44px;
-    }
-    .player-info {
-        flex: 1;
-        min-width: 0;
-        white-space: normal;
-        word-break: break-word;
-        font-size: 0.9rem;
-    }
-    .player-bar button {
-        width: 44px;
-        height: 44px;
-        font-size: 1.2rem;
-    }
-    .player-bar input[type="range"] {
-        width: 100%;
-        margin: 0.25rem 0;
-    }
-    #progress,
-    #volume {
-        order: 10;
-        width: 100%;
-    }
-    #progress {
-        margin-top: 0.5rem;
-    }
-    #skip-forward-10, #skip-back-10, #repeat-btn {
-        display: none;
+    #repeat-btn {
+        grid-column: 8;
+        grid-row: 1;
     }
 }
 
-@media (max-width: 465px) {
-    .player-bar #progress,
-    .player-bar #volume,
-    #skip-forward-10, #skip-back-10, #repeat-btn, .player-cover {
-        display: none;
-    }
-    .player-info {
-        max-width: 20%;
-    }
-}
-
-/* ========== ОБЩИЕ СТИЛИ ДЛЯ ПОЛЗУНКОВ ========== */
+/* ---------- ПОЛЗУНКИ (RANGE) ---------- */
 input[type=range] {
     -webkit-appearance: none;
     appearance: none;
@@ -805,7 +788,7 @@ input[type=range]:focus::-moz-range-track {
     opacity: 0.5;
 }
 
-/* ========== СТИЛИЗАЦИЯ ЧЕКБОКСОВ ========== */
+/* ---------- ЧЕКБОКСЫ ---------- */
 input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
@@ -843,17 +826,10 @@ input[type="checkbox"]:focus {
     outline: none;
     box-shadow: 0 0 0 2px var(--primary-color), 0 0 0 4px rgba(0,0,0,0.1);
 }
-@media (max-width: 768px) {
-    input[type="checkbox"] {
-        width: 1.4em;
-        height: 1.4em;
-    }
-    input[type="checkbox"]:checked::after {
-        font-size: 1.1em;
-    }
-}
 
-/* ========== СТИЛИ ДЛЯ СТРАНИЦЫ ARCHIVE.ORG ========== */
+/* =========================================================
+   ARCHIVE.ORG
+   ========================================================= */
 #page-archive .search-bar {
     display: flex;
     gap: 0.5rem;
@@ -884,39 +860,10 @@ input[type="checkbox"]:focus {
     background-color: var(--primary-color);
     color: white;
 }
-@media (max-width: 768px) {
-    #page-archive .search-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    #archive-search-input {
-        width: 100%;
-    }
-    #archive-search-btn,
-    #archive-radio-btn {
-        width: 100%;
-        text-align: center;
-        justify-content: center;
-    }
-}
-@media (max-width: 465px) {
-    #archive-results .track-item {
-        padding: 0.5rem;
-    }
-    #archive-results .track-item div {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch;
-    }
-    #archive-results .track-item button {
-        width: 100%;
-        margin: 0.2rem 0;
-        justify-content: center;
-    }
-}
 
-/* ========== ТЕМЫ И ТОНКАЯ НАСТРОЙКА ========== */
+/* =========================================================
+   ТОНКАЯ НАСТРОЙКА ТЕМЫ
+   ========================================================= */
 .theme-fine-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -950,7 +897,9 @@ input[type="checkbox"]:focus {
     margin-top: 1rem;
 }
 
-/* ========== БЭЙДЖИ ТЕГОВ ========== */
+/* =========================================================
+   БЭЙДЖИ ТЕГОВ
+   ========================================================= */
 .tag-badge {
     display: inline-flex;
     align-items: center;
@@ -983,7 +932,9 @@ input[type="checkbox"]:focus {
     color: white;
 }
 
-/* ========== ДЕТАЛИ ТРЕКА ========== */
+/* =========================================================
+   ДЕТАЛИ ТРЕКА
+   ========================================================= */
 .track-detail {
     display: flex;
     flex-direction: column;
@@ -991,7 +942,7 @@ input[type="checkbox"]:focus {
     text-align: center;
 }
 .track-detail-cover {
-    max-width:150px;
+    max-width: 150px;
     max-height: 150px;
     border-radius: 8px;
     object-fit: cover;
@@ -1032,6 +983,7 @@ input[type="checkbox"]:focus {
     background-color: var(--bg-color);
     color: var(--text-color);
 }
+
 #player-visualizer {
     display: block;
     width: 50px;
@@ -1087,434 +1039,65 @@ input[type="checkbox"]:focus {
     color: white;
 }
 
-/* ========== АДАПТИВНОСТЬ ДЛЯ ОСТАЛЬНЫХ ЭЛЕМЕНТОВ ========== */
-@media (max-width: 1040px) {
-    .tag-input,
-    #detail-new-tag {
-        width: 12.5%;
-        padding: 0.4rem 0.6rem;
-        box-sizing: border-box;
-    }
-}
-@media (max-width: 900px) {
-    .toolbar button, .toolbar select {
-        padding: 0.5rem 0.8rem;
-        font-size: 0.85rem;
-    }
-}
-@media (max-width: 768px) {
-    .toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .main-nav {
-        margin-left: 0;
-        justify-content: center;
-    }
-    .nav-btn {
-        padding: 0.75rem;
-        font-size: 1.1rem;
-    }
-    .track-item button, .queue-item button, .excluded-item button, .playlist-item button {
-        padding: 0.5rem 1rem;
-        font-size: 1rem;
-    }
-    .track-detail-actions button {
-        padding: 0.5rem;
-        font-size: 1rem;
-    }
-    .track-item .add-tag-btn,
-    .track-item .exclude-btn,
-    .track-item .add-to-playlist-btn,
-    .track-item .tag-input {
-        display: none;
-    }
-    .track-item .play-now-btn,
-    .track-item .play-immediate-btn,
-    .track-item .details-btn {
-        display: inline-flex;
-    }
-    .tag-input,
-    #detail-new-tag {
-        width: 25%;
-        padding: 0.4rem 0.6rem;
-        box-sizing: border-box;
-    }
-}
-@media (max-width: 600px) {
-    .toolbar {
-        gap: 0.5rem;
-    }
-    .toolbar button, .toolbar select {
-        padding: 0.4rem 0.7rem;
-        font-size: 0.8rem;
-    }
-    .toolbar > #import-btn,
-    .toolbar > #export-btn,
-    .toolbar > #theme-select {
-        display: none;
-    }
-    #select-music-btn {
-        width: 100%;
-    }
-    .nav-btn {
-        padding: 0.5rem;
-        font-size: 0.9rem;
-    }
-    main {
-        padding-bottom: 10px;
-    }
-    .track-detail {
-        max-height: calc(100vh - 200px);
-        overflow-y: auto;
-        padding-bottom: 20px;
-    }
-    .track-detail-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .track-detail-actions button,
-    .track-detail-actions input {
-        width: 100%;
-        margin: 0.2rem 0;
-    }
-    .track-playback-controls {
-        margin-top: 1rem;
-        padding: 0.8rem;
-    }
-    .playback-buttons button {
-        width: 50px;
-        height: 50px;
-        font-size: 1.3rem;
-    }
-    .tag-input,
-    #detail-new-tag {
-        width: 100%;
-        padding: 0.4rem 0.6rem;
-        box-sizing: border-box;
-    }
-}
-/* Средние экраны (от 466px до 768px) */
-@media (min-width: 466px) and (max-width: 768px) {
-    html, body {
-        width: 100%;
-        overflow-x: hidden;
-    }
-    /* ===== ТУЛБАР ===== */
-    .toolbar {
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: 0.5rem;
-    }
-    .toolbar button,
-    .toolbar select {
-        font-size: 0.85rem;
-        padding: 0.4rem 0.6rem;
-    }
-    /* Скрываем кнопки, которые не помещаются */
-    .toolbar > #import-btn,
-    .toolbar > #export-btn,
-    .toolbar > #theme-select {
-        display: none;
-    }
-    /* Кнопка выбора папки занимает доступное место */
-    #select-music-btn {
-        flex: 1;
-        min-width: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    /* ===== ФУТЕР ===== */
-    .player-bar {
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-    }
-    .player-info {
-        max-width: 35%;
-        font-size: 0.9rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .player-bar button {
-        width: 36px;
-        height: 36px;
-        font-size: 1rem;
-    }
-    .player-bar input[type="range"] {
-        flex: 1;
-        min-width: 80px;
-        width: auto;
-    }
-    #progress,
-    #volume {
-        order: 0; /* отменяем перенос из мобильной версии */
-    }
-
-    /* Для экранов уже до 600px внутри диапазона */
-    @media (max-width: 600px) {
-        #progress {
-            order: 1;
-            width: 100%;
-            margin-top: 0.5rem;
-        }
-        .player-info {
-            max-width: 35%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-        }
-    }
-}
-@media (max-width: 465px) {
-    header {
-        padding: 0.5rem;
-    }
-    .toolbar {
-        gap: 0.4rem;
-    }
-    .toolbar button, .toolbar select {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.8rem;
-    }
-    .toolbar > #import-btn,
-    .toolbar > #export-btn,
-    .toolbar > #theme-select {
-        display: none;
-    }
-    .main-nav {
-        flex-wrap: wrap;
-        gap: 0.3rem;
-        margin-left: 0;
-        width: 100%;
-    }
-    .nav-btn {
-        flex: 1 1 calc(50% - 0.3rem);
-        text-align: center;
-        padding: 0.5rem 0.2rem;
-        font-size: 0.9rem;
-    }
-    main {
-        padding: 0.5rem;
-        padding-bottom: 6vh;
-    }
-    h2 {
-        font-size: 1.2rem;
-        margin-bottom: 0.5rem;
-    }
-    .filter-bar, .search-bar {
-        flex-direction: column;
-        gap: 0.3rem;
-    }
-    .filter-bar input, .search-bar input {
-        width: 100%;
-    }
-    .track-item, .queue-item, .playlist-item {
-        padding: 0.5rem;
-    }
-    .track-item {
-        width: 90%;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    .track-item button, .queue-item button, .excluded-item button, .playlist-item button {
-        padding: 0.4rem 0.6rem;
-        font-size: 0.8rem;
-        margin-bottom: 0.2rem;
-    }
-    .track-item .tag-input {
-        width: 100%;
-        margin-top: 0.3rem;
-    }
-    .track-tags {
-        font-size: 0.75rem;
-    }
-    .tag-badge {
-        font-size: 0.7rem;
-        padding: 0.1rem 0.3rem;
-    }
-    .queue-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.3rem;
-        width: 90%;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    .queue-item span {
-        width: 100%;
-        white-space: normal;
-        word-break: break-word;
-    }
-    .queue-controls {
-        flex-wrap: wrap;
-        justify-content: flex-start;
-    }
-    .playlist-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.3rem;
-    }
-    .playlist-actions {
-        width: 100%;
-        display: flex;
-        gap: 0.3rem;
-    }
-    .playlist-actions button {
-        flex: 1;
-    }
-    .track-detail-cover,
-    .track-detail-cover.no-cover {
-        max-width: 150px;
-        max-height: 150px;
-        width: 150px;
-        height: 150px;
-    }
-    .track-detail-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .track-detail-actions button,
-    .track-detail-actions input {
-        width: 100%;
-    }
-    .playback-buttons button {
-        width: 50px;
-        height: 50px;
-        font-size: 1.5rem;
-    }
-    .player-info {
-        max-width: 35%;
-        overflow: hidden;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-    }
-    .setting-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.3rem;
-    }
-    .setting-item label {
-        min-width: auto;
-    }
-    .setting-item select,
-    .setting-item input[type="color"] {
-        width: 100%;
-    }
-    .excluded-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.3rem;
-    }
-    .track-item .add-tag-btn,
-    .track-item .exclude-btn,
-    .track-item .add-to-playlist-btn,
-    .track-item .tag-input {
-        display: none;
-    }
-    .track-item .play-now-btn,
-    .track-item .play-immediate-btn,
-    .track-item .details-btn {
-        display: inline-flex;
-    }
-    .track-detail {
-        max-height: calc(100vh - 180px);
-        overflow-y: auto;
-        padding-bottom: 20px;
-    }
-    .track-playback-controls {
-        padding: 0.5rem;
-    }
-    .playback-progress span,
-    .playback-volume span {
-        font-size: 0.8rem;
-    }
-    #select-music-btn {
-        display: none;
-    }
-    /* Стили ТОЛЬКО для верхнего блока управления всей очередью */
-    main .queue-controls {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr); 
-        gap: 0.5rem;
-        width: 80%; 
-        margin: 10px auto; 
-        padding: 0;
-    }
-
-    /* Стили для кнопок ТОЛЬКО в верхнем блоке */
-    main .queue-controls > button {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;       
-        padding: 0.6rem;   
-        font-size: 0.85rem;
-        white-space: nowrap;
-        margin: 0;         
-    }
-
-    /* Растягиваем длинную кнопку плейлиста на обе колонки */
-    #save-queue-as-playlist {
-        grid-column: span 2;
-    }
-
-    /* Восстанавливаем стили для кнопок действий внутри самого трека */
-    .queue-item .queue-controls {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap;
-        justify-content: space-between; /* Равномерно распределяет кнопки по ширине */
-        width: 100%;                     /* Заставляет блок кнопок занять всю ширину трека */
-        margin: 10px 0 0 0;
-        gap: 0.5rem;
-    }
-
-    .queue-item .queue-controls button {
-        flex: 1;                         /* Делает все кнопки одинаковой ширины, деля пространство поровну */
-        max-width: 1000px;                 /* Ограничиваем максимальную ширину, чтобы кнопки не были слишком гигантскими */
-        height: 40px;                    /* Компактная высота для мобильных */
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-}
-
-/* Эффект бегущей строки */
+/* =========================================================
+   ЭФФЕКТ БЕГУЩЕЙ СТРОКИ В ПЛЕЕРЕ
+   ========================================================= */
 .player-info {
     max-width: 20%;
+    font-weight: 500;
     overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    min-width: 0;
 }
 
 #current-track-name {
+    position: relative; /* якорь для absolute-потомка */
+    display: block;
     overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
+    width: 100%;
+    min-width: 0;
+    height: 1.4em; /* фиксированная высота — стабильность layout */
+}
+
+#current-track-name.marquee-ready {
+    text-overflow: clip; /* ellipsis не нужен во время прокрутки */
+}
+
+/* Абсолютное позиционирование вынимает контент из потока */
+#current-track-name .marquee-content {
+    position: absolute;
+    top: 0;
+    left: 0;
     display: flex;
+    white-space: nowrap;
+    will-change: transform;
+    pointer-events: none;
+}
+
+#current-track-name .marquee-copy {
+    display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-right: 3rem; /* стык для бесшовного цикла */
 }
 
-#current-track-name .marquee-text {
-    display: inline-block;
-    padding-right: 1rem;
+#current-track-name.marquee-animate .marquee-content {
+    animation: marquee-scroll 15s linear infinite;
 }
 
-#current-track-name.marquee-animate .marquee-text {
-    animation: marquee 12s linear infinite;
+@keyframes marquee-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
 }
 
-@keyframes marquee {
-    0% {
-        transform: translateX(0);
-    }
-    100% {
-        transform: translateX(-50%);
-    }
-}
-
+/* =========================================================
+   СКЕЛЕТОН
+   ========================================================= */
 .skeleton-item {
     background: var(--secondary-bg);
     border-radius: var(--border-radius);
@@ -1535,6 +1118,9 @@ input[type="checkbox"]:focus {
     100% { opacity: 0.6; }
 }
 
+/* =========================================================
+   ТОСТЫ
+   ========================================================= */
 .toast {
     position: fixed;
     bottom: 20px;
@@ -1566,7 +1152,11 @@ input[type="checkbox"]:focus {
     background-color: var(--primary-color);
 }
 
-#skip-back-10, #skip-forward-10 {
+/* =========================================================
+   КНОПКИ SKIP ±10 И ПОВТОР
+   ========================================================= */
+#skip-back-10,
+#skip-forward-10 {
     background: none;
     border: 1px solid var(--border-color);
     padding: 0 0.8rem;
@@ -1575,7 +1165,8 @@ input[type="checkbox"]:focus {
     cursor: pointer;
     width: auto;
 }
-#skip-back-10:hover, #skip-forward-10:hover {
+#skip-back-10:hover,
+#skip-forward-10:hover {
     background-color: var(--primary-color);
     color: white;
 }
@@ -1584,7 +1175,9 @@ input[type="checkbox"]:focus {
     color: white;
 }
 
-/* ========== МОДАЛЬНЫЕ ОКНА ========== */
+/* =========================================================
+   МОДАЛЬНЫЕ ОКНА
+   ========================================================= */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -1598,6 +1191,7 @@ input[type="checkbox"]:focus {
     justify-content: center;
     z-index: 10000;
     transition: opacity 0.2s ease;
+    overscroll-behavior: contain;
 }
 .modal-overlay.hidden {
     display: none;
@@ -1710,34 +1304,36 @@ input[type="checkbox"]:focus {
     background-color: var(--hover-bg);
 }
 
-@media (max-width: 480px) {
-    .modal-container {
-        width: 95%;
-        margin: 1rem;
-    }
-    .modal-body {
-        padding: 1rem;
-    }
-    .modal-buttons {
-        flex-direction: column-reverse;
-    }
-    .modal-btn {
-        width: 100%;
-        text-align: center;
-    }
-}
-
-/* ========== РАСПОЛОЖЕНИЕ НАВИГАЦИИ ========== */
+/* =========================================================
+   РАСПОЛОЖЕНИЕ НАВИГАЦИИ
+   ========================================================= */
 #app {
     display: grid;
     height: 100vh;
     overflow: hidden;
 }
 
-/* ----- ПОЗИЦИЯ: СВЕРХУ (по умолчанию) ----- */
+/* Защита: grid-элементы не должны расширяться под min-content потомков */
+body.nav-top header,
+body.nav-top main,
+body.nav-top footer,
+body.nav-bottom header,
+body.nav-bottom main,
+body.nav-bottom footer,
+body.nav-left header,
+body.nav-left main,
+body.nav-left footer,
+body.nav-right header,
+body.nav-right main,
+body.nav-right footer {
+    min-width: 0;
+    min-height: 0;
+}
+
+/* ПОЗИЦИЯ: СВЕРХУ (по умолчанию) */
 body.nav-top #app {
     grid-template-rows: auto 1fr auto;
-    grid-template-areas: 
+    grid-template-areas:
         "header"
         "main"
         "footer";
@@ -1753,10 +1349,10 @@ body.nav-top footer {
     grid-area: footer;
 }
 
-/* ----- ПОЗИЦИЯ: СНИЗУ ----- */
+/* ПОЗИЦИЯ: СНИЗУ */
 body.nav-bottom #app {
     grid-template-rows: 1fr auto auto;
-    grid-template-areas: 
+    grid-template-areas:
         "main"
         "header"
         "footer";
@@ -1771,11 +1367,11 @@ body.nav-bottom footer {
     grid-area: footer;
 }
 
-/* ----- ПОЗИЦИЯ: СЛЕВА ----- */
+/* ПОЗИЦИЯ: СЛЕВА */
 body.nav-left #app {
     grid-template-columns: auto 1fr;
     grid-template-rows: 1fr auto;
-    grid-template-areas: 
+    grid-template-areas:
         "header main"
         "footer footer";
 }
@@ -1812,11 +1408,11 @@ body.nav-left footer {
     grid-area: footer;
 }
 
-/* ----- ПОЗИЦИЯ: СПРАВА ----- */
+/* ПОЗИЦИЯ: СПРАВА */
 body.nav-right #app {
     grid-template-columns: 1fr auto;
     grid-template-rows: 1fr auto;
-    grid-template-areas: 
+    grid-template-areas:
         "main header"
         "footer footer";
 }
@@ -1853,13 +1449,13 @@ body.nav-right footer {
     grid-area: footer;
 }
 
-/* ----- АДАПТИВ: НА УЗКИХ ЭКРАНАХ ЛЕВУЮ/ПРАВУЮ ПАНЕЛЬ ПРЕВРАЩАЕМ В ВЕРХНЮЮ ----- */
+/* На узких экранах левая/правая панели превращаются в верхнюю */
 @media (max-width: 768px) {
     body.nav-left #app,
     body.nav-right #app {
         grid-template-rows: auto 1fr auto;
         grid-template-columns: 1fr;
-        grid-template-areas: 
+        grid-template-areas:
             "header"
             "main"
             "footer";
@@ -1892,6 +1488,7 @@ body.nav-right footer {
     }
 }
 
+/* Скрываем часть тулбара при боковой навигации */
 body.nav-left .toolbar > #import-btn,
 body.nav-left .toolbar > #export-btn,
 body.nav-left .toolbar > #theme-select,
@@ -1901,7 +1498,9 @@ body.nav-right .toolbar > #theme-select {
     display: none;
 }
 
-/* ========== СТИЛИ ДЛЯ РЕДАКТОРА ИНТЕРВАЛОВ ГРОМКОСТИ ========== */
+/* =========================================================
+   РЕДАКТОР ИНТЕРВАЛОВ ГРОМКОСТИ
+   ========================================================= */
 .interval-editor-section {
     margin-bottom: 0.75rem;
     display: flex;
@@ -1961,17 +1560,20 @@ body.nav-right .toolbar > #theme-select {
     color: var(--text-color);
     font-size: 1rem;
 }
-#interval-end, #interval-start {
-        padding: 0.4rem 0.6rem;
-        box-sizing: border-box;
- }
+#interval-end,
+#interval-start {
+    padding: 0.4rem 0.6rem;
+    box-sizing: border-box;
+}
 
-/* ========== СТРАНИЦА «СВОЙ СЕРВЕР» ========== */
+/* =========================================================
+   СТРАНИЦА «СВОЙ СЕРВЕР»
+   ========================================================= */
 .server-status {
     padding: 0.75rem 1rem;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    margin-bottom: 0;
+    margin-bottom: 0.5rem;
     font-size: 0.95rem;
     transition: background-color 0.2s;
 }
@@ -2006,4 +1608,676 @@ body.nav-right .toolbar > #theme-select {
     cursor: pointer;
     white-space: nowrap;
     transition: background-color 0.2s;
+}
+.my-server-settings {
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+}
+.my-server-settings .setting-item {
+    width: 100%;
+}
+
+/* =========================================================
+   МОБИЛЬНАЯ АДАПТАЦИЯ (упорядочено по каскаду)
+   Логика: чем уже экран — тем компактнее интерфейс,
+   второстепенные элементы скрываются для рабочей зоны.
+   ========================================================= */
+
+/* ---------- Планшеты и узкие ноутбуки ---------- */
+@media (max-width: 768px) {
+
+    /* ===== ТУЛБАР ===== */
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    .toolbar button,
+    .toolbar select {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    .main-nav {
+        margin-left: 0;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .nav-btn {
+        padding: 0.6rem 0.9rem;
+        font-size: 0.95rem;
+    }
+
+    /* ===== ЧЕКБОКСЫ ===== */
+    input[type="checkbox"] {
+        width: 1.4em;
+        height: 1.4em;
+    }
+    input[type="checkbox"]:checked::after {
+        font-size: 1.1em;
+    }
+
+    /* ===== ПОЛЕ ВВОДА ТЕГА ===== */
+    .tag-input,
+    #detail-new-tag {
+        width: 25%;
+        padding: 0.4rem 0.6rem;
+        box-sizing: border-box;
+    }
+
+    /* ===== СПИСОК ТРЕКОВ ===== */
+    .track-item button,
+    .queue-item button,
+    .excluded-item button,
+    .playlist-item button {
+        padding: 0.5rem 0.9rem;
+        font-size: 0.95rem;
+    }
+    .track-detail-actions button {
+        padding: 0.5rem;
+        font-size: 1rem;
+    }
+    /* Скрываем второстепенные кнопки в карточке трека */
+    .track-item .add-tag-btn,
+    .track-item .exclude-btn,
+    .track-item .add-to-playlist-btn,
+    .track-item .tag-input {
+        display: none;
+    }
+    .track-item .play-now-btn,
+    .track-item .play-immediate-btn,
+    .track-item .details-btn {
+        display: inline-flex;
+    }
+
+    /* ===== ДЕТАЛИ ТРЕКА ===== */
+    .track-detail {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+        padding-bottom: 20px;
+    }
+    .track-detail-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .track-detail-actions button,
+    .track-detail-actions input {
+        width: 100%;
+        margin: 0.2rem 0;
+    }
+    .track-playback-controls {
+        margin-top: 1rem;
+        padding: 0.8rem;
+    }
+    .playback-buttons button {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3rem;
+    }
+
+    /* ===== ПЛЕЕР (основная логика) ===== */
+    .player-bar {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+        background-color: var(--player-bg);
+        z-index: 100;
+    }
+    .player-cover {
+        width: 42px;
+        height: 42px;
+    }
+    .player-info {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.9rem;
+    }
+    .player-bar button {
+        width: 42px;
+        height: 42px;
+        font-size: 1.15rem;
+    }
+    /* Range-слайдеры переезжают на отдельную строку во всю ширину */
+    #progress,
+    #volume {
+        order: 10;
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+    #progress {
+        margin-top: 0.4rem;
+    }
+    /* Прячем второстепенные кнопки для освобождения места */
+    #skip-forward-10,
+    #skip-back-10,
+    #repeat-btn {
+        display: none;
+    }
+
+    /* ===== ARCHIVE ===== */
+    #page-archive .search-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #archive-search-input {
+        width: 100%;
+    }
+    #archive-search-btn,
+    #archive-radio-btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+
+    /* ===== СВОЙ СЕРВЕР ===== */
+    #page-server .search-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #server-search-input {
+        width: 100%;
+    }
+    #server-search-btn,
+    #server-radio-btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+    #page-server .setting-item {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    #page-server .setting-item button {
+        flex: 1 1 auto;
+        min-width: 140px;
+        justify-content: center;
+    }
+    .my-server-settings {
+        justify-content: center;
+        align-content: center;
+        align-items: center;
+    }
+    .my-server-settings .setting-item {
+        width: 100%;
+    }
+}
+
+/* ---------- Небольшие телефоны ---------- */
+@media (max-width: 600px) {
+
+    /* ===== ШАПКА И НАВИГАЦИЯ ===== */
+    header {
+        padding: 0.5rem;
+    }
+    .toolbar {
+        gap: 0.4rem;
+    }
+    .toolbar button,
+    .toolbar select {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.8rem;
+    }
+    /* На этом размере уже прячем импорт/экспорт/выбор темы из шапки */
+    .toolbar > #import-btn,
+    .toolbar > #export-btn,
+    .toolbar > #theme-select {
+        display: none;
+    }
+    #select-music-btn {
+        width: 100%;
+    }
+    .nav-btn {
+        padding: 0.5rem 0.7rem;
+        font-size: 0.9rem;
+    }
+
+    /* ===== ОСНОВНОЙ КОНТЕНТ ===== */
+    main {
+        padding: 0.5rem;
+        padding-bottom: 10px;
+    }
+    h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+    .filter-bar,
+    .search-bar {
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+    .filter-bar input,
+    .search-bar input {
+        width: 100%;
+    }
+
+    /* ===== КАРТОЧКИ ТРЕКОВ ===== */
+    .track-item,
+    .queue-item,
+    .playlist-item {
+        padding: 0.5rem;
+    }
+    .track-item button,
+    .queue-item button,
+    .excluded-item button,
+    .playlist-item button {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.85rem;
+        margin-bottom: 0.2rem;
+    }
+    .track-tags {
+        font-size: 0.75rem;
+    }
+    .tag-badge {
+        font-size: 0.7rem;
+        padding: 0.1rem 0.35rem;
+    }
+
+    /* ===== ОЧЕРЕДЬ ===== */
+    .queue-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+    .queue-item span {
+        width: 100%;
+        white-space: normal;
+        word-break: break-word;
+    }
+    /* Верхний блок управления очередью — сетка 2 колонки */
+    main .queue-controls {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        width: 100%;
+        margin: 10px auto;
+        padding: 0;
+    }
+    main .queue-controls > button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 0.55rem 0.4rem;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        margin: 0;
+    }
+    #save-queue-as-playlist {
+        grid-column: span 2;
+    }
+    /* Кнопки внутри одного трека — компактные в ряд */
+    .queue-item .queue-controls {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        width: 100%;
+        margin: 8px 0 0 0;
+        gap: 0.4rem;
+    }
+    .queue-item .queue-controls button {
+        flex: 1;
+        height: 36px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* ===== ПЛЕЙЛИСТЫ ===== */
+    .playlist-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+    .playlist-actions {
+        width: 100%;
+        display: flex;
+        gap: 0.3rem;
+    }
+    .playlist-actions button {
+        flex: 1;
+    }
+    .playlist-track-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+    .playlist-track-controls {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    /* ===== ДЕТАЛИ ТРЕКА ===== */
+    .track-detail-cover,
+    .track-detail-cover.no-cover {
+        max-width: 130px;
+        max-height: 130px;
+        width: 130px;
+        height: 130px;
+    }
+    .playback-buttons button {
+        width: 46px;
+        height: 46px;
+        font-size: 1.2rem;
+    }
+
+    /* ===== НАСТРОЙКИ ===== */
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+    .setting-item label {
+        min-width: auto;
+    }
+    .setting-item select,
+    .setting-item input[type="color"] {
+        width: 100%;
+    }
+    .excluded-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+
+    /* ===== ПОЛЕ ВВОДА ТЕГА ===== */
+    .tag-input,
+    #detail-new-tag {
+        width: 100%;
+        padding: 0.4rem 0.6rem;
+        box-sizing: border-box;
+    }
+
+    /* ===== ARCHIVE (дополнительно) ===== */
+    #archive-results .track-item div,
+    #server-results .track-item div {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        align-items: stretch;
+    }
+    #archive-results .track-item button,
+    #server-results .track-item button {
+        width: 100%;
+        margin: 0.1rem 0;
+        justify-content: center;
+    }
+
+    /* ===== ПЛЕЕР (компактнее) ===== */
+    .player-bar {
+        gap: 0.3rem;
+        padding: 0.4rem 0.5rem;
+    }
+    .player-info {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: none;
+        font-size: 0.82rem;
+    }
+    .player-bar button {
+        width: 36px;
+        height: 36px;
+        font-size: 1.05rem;
+    }
+    /* ===== Свой Сервер ===== */
+    .my-server-settings {
+        justify-content: center;
+        align-content: center;
+        align-items: center;
+    }
+    .my-server-settings .setting-item {
+        width: 100%;
+    }
+}
+
+/* ---------- Очень узкие экраны ---------- */
+@media (max-width: 465px) {
+
+    /* ===== ШАПКА ===== */
+    header {
+        padding: 0.4rem;
+    }
+    .toolbar {
+        gap: 0.3rem;
+    }
+    .toolbar button,
+    .toolbar select {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.78rem;
+    }
+    /* На таких экранах кнопка выбора музыки скрывается — доступ через настройки */
+    #select-music-btn {
+        display: none;
+    }
+    .main-nav {
+        flex-wrap: wrap;
+        gap: 0.3rem;
+        margin-left: 0;
+        width: 100%;
+    }
+    .nav-btn {
+        flex: 1 1 calc(50% - 0.3rem);
+        text-align: center;
+        padding: 0.5rem 0.2rem;
+        font-size: 0.85rem;
+    }
+    .nav-btn .icon {
+        width: 1.1em;
+        height: 1.1em;
+    }
+
+    /* ===== ОСНОВНОЙ КОНТЕНТ ===== */
+    main {
+        padding: 0.4rem;
+        padding-bottom: 6vh;
+    }
+    h2 {
+        font-size: 1.1rem;
+        margin-bottom: 0.4rem;
+    }
+
+    /* ===== КАРТОЧКИ ===== */
+    .track-item,
+    .queue-item,
+    .playlist-item {
+        padding: 0.45rem;
+        width: 90%;
+        justify-self: center;
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .track-item button,
+    .queue-item button,
+    .excluded-item button,
+    .playlist-item button {
+        padding: 0.35rem 0.55rem;
+        font-size: 0.78rem;
+        margin-bottom: 0.15rem;
+    }
+    .track-item .tag-input {
+        width: 100%;
+        margin-top: 0.25rem;
+    }
+    .track-tags {
+        font-size: 0.72rem;
+    }
+    .tag-badge {
+        font-size: 0.68rem;
+        padding: 0.1rem 0.3rem;
+    }
+
+    /* ===== ДЕТАЛИ ТРЕКА ===== */
+    .track-detail {
+        max-height: calc(100vh - 180px);
+        overflow-y: auto;
+        padding-bottom: 20px;
+    }
+    .track-detail-cover,
+    .track-detail-cover.no-cover {
+        max-width: 110px;
+        max-height: 110px;
+        width: 110px;
+        height: 110px;
+    }
+    .track-detail-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .track-detail-actions button,
+    .track-detail-actions input {
+        width: 100%;
+    }
+    .track-playback-controls {
+        padding: 0.5rem;
+    }
+    .playback-progress span,
+    .playback-volume span {
+        font-size: 0.8rem;
+    }
+    .playback-buttons button {
+        width: 42px;
+        height: 42px;
+        font-size: 1.1rem;
+    }
+
+    /* ===== ПЛЕЕР (максимальная компактность) ===== */
+    .player-bar {
+        gap: 0.25rem;
+        padding: 0.35rem 0.4rem;
+    }
+    /* Скрываем обложку — она занимает ценное место */
+    .player-cover {
+        display: none;
+    }
+    .player-info {
+        flex: 1 1 0;
+        max-width: none;
+        min-width: 0;
+        font-size: 0.8rem;
+    }
+    .player-bar button {
+        width: 34px;
+        height: 34px;
+        font-size: 1rem;
+    }
+    /* На этом размере всё ещё прячем volume, но progress остаётся */
+    #volume {
+        display: none;
+    }
+    #progress {
+        order: 10;
+        width: 100%;
+        margin-top: 0.2rem;
+    }
+
+    /* ===== НАСТРОЙКИ ===== */
+    .settings-section {
+        padding: 0.75rem;
+    }
+    .settings-section h3 {
+        font-size: 1.05rem;
+    }
+    .setting-item button {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.85rem;
+    }
+
+    /* ===== ИНТЕРВАЛЫ ГРОМКОСТИ ===== */
+    .interval-editor-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .interval-editor-section label {
+        min-width: auto;
+    }
+    .interval-list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+    #interval-end,
+    #interval-start {
+        width: 100%;
+    }
+    /* ===== Свой Сервер ===== */
+    .my-server-settings {
+        justify-content: center;
+        align-content: center;
+        align-items: center;
+    }
+    .my-server-settings .setting-item {
+        width: 100%;
+    }
+}
+
+/* ---------- Модальные окна ---------- */
+@media (max-width: 480px) {
+    .modal-container {
+        width: 95%;
+        margin: 1rem;
+    }
+    .modal-body {
+        padding: 1rem;
+    }
+    .modal-buttons {
+        flex-direction: column-reverse;
+    }
+    .modal-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* ---------- Тосты и скелетон на мобильных ---------- */
+@media (max-width: 600px) {
+    .toast {
+        font-size: 0.8rem;
+        padding: 8px 14px;
+        white-space: normal;
+        max-width: 90%;
+        text-align: center;
+        bottom: 80px; /* чтобы не перекрывался плеером */
+    }
+    .skeleton-item {
+        padding: 0.5rem;
+    }
+    .skeleton-line {
+        height: 0.8rem;
+    }
+}
+
+/* ---------- Touch-friendly улучшения ---------- */
+@media (hover: none) and (pointer: coarse) {
+    button,
+    input[type="range"],
+    input[type="checkbox"],
+    .nav-btn,
+    .track-item,
+    .queue-item {
+        touch-action: manipulation;
+    }
+    input[type="range"] {
+        --range-thumb-size: 22px;
+        --range-track-height: 8px;
+    }
+    .track-item:hover,
+    .queue-item:hover,
+    .playlist-item:hover {
+        transform: none; /* убираем hover-эффект на тач-устройствах */
+    }
+}
+
+.settings-section a {
+    color: var(--text-color);
 }

@@ -922,6 +922,7 @@ var UI = class UI {
 
     updateCurrentTrack(track, pictureUrl) {
         const nameEl = document.getElementById('current-track-name');
+        nameEl.classList.remove('marquee-ready', 'marquee-animate');
         nameEl.innerHTML = track ? `<svg class="icon"><use href="#icon-note"></use></svg> ${track.name}` : '<svg class="icon"><use href="#icon-note"></use></svg> Не выбрано';
         nameEl.removeAttribute('data-original-html');
         this.applyMarqueeIfNeeded();
@@ -1827,16 +1828,24 @@ var UI = class UI {
         const el = document.getElementById('current-track-name');
         if (!el) return;
 
-        let originalHtml = el.getAttribute('data-original-html');
-        if (!originalHtml) {
-            originalHtml = el.innerHTML;
-            el.setAttribute('data-original-html', originalHtml);
+        // 1. Если элемент в marquee-состоянии — восстановить чистый HTML
+        if (el.classList.contains('marquee-ready')) {
+            const saved = el.getAttribute('data-original-html');
+            if (saved) el.innerHTML = saved;
+            el.classList.remove('marquee-ready', 'marquee-animate');
         }
 
+        // 2. Запомнить текущий «чистый» HTML как исходный
+        const originalHtml = el.innerHTML;
+        el.setAttribute('data-original-html', originalHtml);
+        if (!originalHtml.trim()) return;
+
+        // 3. Измерить полную ширину текста
         const tempDiv = document.createElement('div');
         tempDiv.style.position = 'absolute';
         tempDiv.style.visibility = 'hidden';
         tempDiv.style.whiteSpace = 'nowrap';
+        tempDiv.style.pointerEvents = 'none';
         const styles = getComputedStyle(el);
         tempDiv.style.font = styles.font;
         tempDiv.style.fontSize = styles.fontSize;
@@ -1848,46 +1857,27 @@ var UI = class UI {
         const fullWidth = tempDiv.offsetWidth;
         document.body.removeChild(tempDiv);
 
+        // 4. Сравнить с шириной родителя
         const containerWidth = el.parentElement ? el.parentElement.clientWidth : el.clientWidth;
+        if (!containerWidth || fullWidth <= containerWidth) return; // marquee не нужен
 
-        const needsMarquee = fullWidth > containerWidth;
-
-        if (needsMarquee && !el.classList.contains('marquee-ready')) {
-            const tempDiv2 = document.createElement('div');
-            tempDiv2.innerHTML = originalHtml;
-            const originalIcon = tempDiv2.querySelector('.icon');
-            let clonedIcon = null;
-            if (originalIcon) {
-                clonedIcon = originalIcon.cloneNode(true);
-            }
-            let text = '';
-            for (let node of tempDiv2.childNodes) {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    text += node.textContent;
-                } else if (node !== originalIcon && node.nodeType === Node.ELEMENT_NODE) {
-                    text += node.textContent;
-                }
-            }
-            text = text.trim();
-
-            el.innerHTML = '';
-            if (clonedIcon) el.appendChild(clonedIcon);
-            const span1 = document.createElement('span');
-            span1.className = 'marquee-text';
-            span1.textContent = text;
-            const span2 = document.createElement('span');
-            span2.className = 'marquee-text';
-            span2.textContent = text;
-            el.appendChild(span1);
-            el.appendChild(span2);
-            el.classList.add('marquee-ready');
-            setTimeout(() => {
-                el.classList.add('marquee-animate');
-            }, 10);
-        } else if (!needsMarquee && el.classList.contains('marquee-ready')) {
-            el.innerHTML = originalHtml;
-            el.classList.remove('marquee-ready', 'marquee-animate');
+        // 5. Построить marquee: две полные копии исходного HTML
+        el.innerHTML = '';
+        const content = document.createElement('div');
+        content.className = 'marquee-content';
+        for (let i = 0; i < 2; i++) {
+            const copy = document.createElement('div');
+            copy.className = 'marquee-copy';
+            copy.innerHTML = originalHtml;
+            content.appendChild(copy);
         }
+        el.appendChild(content);
+        el.classList.add('marquee-ready');
+
+        // 6. Запустить анимацию после перерисовки
+        //    Принудительный reflow, чтобы браузер зафиксировал начальное состояние
+        void content.offsetWidth;
+        el.classList.add('marquee-animate');
     }
 
     async renderArchivePage() {
@@ -2114,18 +2104,17 @@ var UI = class UI {
     }
 
     async deleteTrack(trackId) {
-        if (ServerAPI.isOnline) { // Если сервер онлайн
+        const track = await this.db.getTrack(trackId);
+        if (!track) return;
+
+        // Удаление с сервера, если трек оттуда
+        if (track.source === 'server' && ServerApi.isAvailable()) {
             try {
-                await fetch(`http://localhost:8000/api/tracks/${trackId}`, {
-                    method: 'DELETE'
-                });
+                await ServerApi.deleteTrack(trackId);
             } catch (err) {
                 console.error("Не удалось удалить трек с сервера:", err);
             }
         }
-
-        const track = await this.db.getTrack(trackId);
-        if (!track) return;
 
         const confirmed = await Modal.confirm(
             `Удалить трек "${track.name}" из библиотеки?`,
