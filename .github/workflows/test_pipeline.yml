@@ -107,26 +107,26 @@ jobs:
           1. Для использования локального сервера перейдите в папку и запустите сервер:
              - Windows: `start_server.bat`
              - Linux / macOS: `chmod +x start-server.sh && ./start-server.sh`
-          2. Откройте `index.html` in браузере или перейдите по адресу http://localhost:8000
+          2. Откройте `index.html` в браузере или перейдите по адресу http://localhost:8000
           EOF
 
       # ---------- УПАКОВКА В ZIP ----------
       - name: Create ZIP archives
         run: |
-          zip -r "music-player-frontend-\${{ github.ref_name }}.zip" build_frontend
-          zip -r "music-player-server-\${{ github.ref_name }}.zip" build_server
-          zip -r "music-player-full-\${{ github.ref_name }}.zip" build_full
+          zip -r "music-player-frontend-${{ github.ref_name }}.zip" build_frontend
+          zip -r "music-player-server-${{ github.ref_name }}.zip" build_server
+          zip -r "music-player-full-${{ github.ref_name }}.zip" build_full
 
       # ---------- ПУБЛИКАЦИЯ РЕЛИЗА ----------
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: \${{ github.ref_name }}
-          name: Release \${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
           files: |
-            music-player-frontend-\${{ github.ref_name }}.zip
-            music-player-server-\${{ github.ref_name }}.zip
-            music-player-full-\${{ github.ref_name }}.zip
+            music-player-frontend-${{ github.ref_name }}.zip
+            music-player-server-${{ github.ref_name }}.zip
+            music-player-full-${{ github.ref_name }}.zip
