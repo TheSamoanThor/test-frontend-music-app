@@ -38,7 +38,7 @@ jobs:
           rm -rf build_frontend
           mkdir -p build_frontend/js
 
-          # Обязательные файлы — падаем с ошибкой, если чего-то нет
+          # Обязательные файлы фронтенда
           test -f index.html  || (echo "index.html not found" && exit 1)
           test -f styles.css  || (echo "styles.css not found" && exit 1)
           test -d js          || (echo "js/ not found" && exit 1)
@@ -65,20 +65,22 @@ jobs:
           mkdir -p build_server/music
 
           # Обязательные файлы сервера
-          for f in server.py requirements.txt; do
-            test -f "f" || (echo "f not found" && exit 1)
-            cp "\$f" build_server/
-          done
+          test -f server.py || (echo "server.py not found" && exit 1)
+          test -f requirements.txt || (echo "requirements.txt not found" && exit 1)
+          cp server.py build_server/
+          cp requirements.txt build_server/
 
-          # Скрипты запуска — копируем, если есть
-          for f in start_server.bat start-server.sh reset_network.bat create_zip.py create_zip.bat; do
-            [ -f "\$f" ] && cp "\(f" build_server/ \vert{}\vert{} echo "\)f отсутствует, пропущено"
-          done
+          # Скрипты запуска (копируем только если они физически существуют)
+          [ -f start_server.bat ] && cp start_server.bat build_server/ || true
+          [ -f start-server.sh ] && cp start-server.sh build_server/ || true
+          [ -f reset_network.bat ] && cp reset_network.bat build_server/ || true
+          [ -f create_zip.py ] && cp create_zip.py build_server/ || true
+          [ -f create_zip.bat ] && cp create_zip.bat build_server/ || true
 
-          # Пустая папка для музыки (сохранится в zip благодаря .gitkeep)
+          # Пустая папка для музыки
           touch build_server/music/.gitkeep
 
-          # README сервера (создадим инструкцию только для сервера)
+          # README сервера
           cat > build_server/README-server.md <<'EOF'
           # Music Player — Server Bundle
 
@@ -108,7 +110,7 @@ jobs:
           cp -r build_frontend/* build_full/
           cp -r build_server/* build_full/
 
-          # Удаляем README отдельных частей, чтобы сделать один общий
+          # Удаляем README сервера, заменим общим
           rm -f build_full/README-server.md
 
           # Создаем README для полной сборки
