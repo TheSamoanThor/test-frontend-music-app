@@ -16,22 +16,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Prepare archive names
-        id: vars
-        run: |
-          TAG=\${GITHUB_REF#refs/tags/}
-          if [ -z "\$TAG" ] || [ "TAG" = "GITHUB_REF" ]; then
-            TAG="dev-\$(date +%Y%m%d-%H%M%S)"
-          fi
-          echo "tag=TAG" >> GITHUB_OUTPUT
-          echo "frontend_archive=music-player-frontend-TAG.zip" >> GITHUB_OUTPUT
-          echo "server_archive=music-player-server-TAG.zip" >> GITHUB_OUTPUT
-          echo "full_archive=music-player-full-TAG.zip" >> GITHUB_OUTPUT
-          echo "Archive names:"
-          echo "  frontend: music-player-frontend-\${TAG}.zip"
-          echo "  server:   music-player-server-\${TAG}.zip"
-          echo "  full:     music-player-full-\${TAG}.zip"
-
       # ---------- ФРОНТЕНД ----------
       - name: Build frontend package
         run: |
@@ -129,19 +113,20 @@ jobs:
       # ---------- УПАКОВКА В ZIP ----------
       - name: Create ZIP archives
         run: |
-          zip -r "\${{ steps.vars.outputs.frontend_archive }}" build_frontend
-          zip -r "\${{ steps.vars.outputs.server_archive }}" build_server
-          zip -r "\${{ steps.vars.outputs.full_archive }}" build_full
+          zip -r "music-player-frontend-\${{ github.ref_name }}.zip" build_frontend
+          zip -r "music-player-server-\${{ github.ref_name }}.zip" build_server
+          zip -r "music-player-full-\${{ github.ref_name }}.zip" build_full
 
       # ---------- ПУБЛИКАЦИЯ РЕЛИЗА ----------
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: \${{ steps.vars.outputs.tag }}
-          name: Release \${{ steps.vars.outputs.tag }}
+          tag_name: \${{ github.ref_name }}
+          name: Release \${{ github.ref_name }}
           draft: false
           prerelease: false
           files: |
-            \${{ steps.vars.outputs.frontend_archive }}
-            \({{ steps.vars.outputs.server_archive }}\){{ steps.vars.outputs.full_archive }}
+            music-player-frontend-\${{ github.ref_name }}.zip
+            music-player-server-\${{ github.ref_name }}.zip
+            music-player-full-\${{ github.ref_name }}.zip
