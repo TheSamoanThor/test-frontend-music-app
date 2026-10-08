@@ -107,7 +107,7 @@ jobs:
           1. Для использования локального сервера перейдите в папку и запустите сервер:
              - Windows: `start_server.bat`
              - Linux / macOS: `chmod +x start-server.sh && ./start-server.sh`
-          2. Откройте `index.html` в браузере или перейдите по адресу http://localhost:8000
+          2. Откройте `index.html` in браузере или перейдите по адресу http://localhost:8000
           EOF
 
       # ---------- УПАКОВКА В ZIP ----------
