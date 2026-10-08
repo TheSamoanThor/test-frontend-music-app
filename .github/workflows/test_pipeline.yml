@@ -20,13 +20,13 @@ jobs:
         id: vars
         run: |
           TAG=\${GITHUB_REF#refs/tags/}
-          if [ -z "\$TAG" ] || [ "\(TAG" = "\)GITHUB_REF" ]; then
+          if [ -z "\$TAG" ] || [ "TAG" = "GITHUB_REF" ]; then
             TAG="dev-\$(date +%Y%m%d-%H%M%S)"
           fi
-          echo "tag=\({TAG}" >> \)GITHUB_OUTPUT
-          echo "frontend_archive=music-player-frontend-\({TAG}.zip" >> \)GITHUB_OUTPUT
-          echo "server_archive=music-player-server-\({TAG}.zip"     >> \)GITHUB_OUTPUT
-          echo "full_archive=music-player-full-\({TAG}.zip"         >> \)GITHUB_OUTPUT
+          echo "tag=TAG" >> GITHUB_OUTPUT
+          echo "frontend_archive=music-player-frontend-TAG.zip" >> GITHUB_OUTPUT
+          echo "server_archive=music-player-server-TAG.zip" >> GITHUB_OUTPUT
+          echo "full_archive=music-player-full-TAG.zip" >> GITHUB_OUTPUT
           echo "Archive names:"
           echo "  frontend: music-player-frontend-\${TAG}.zip"
           echo "  server:   music-player-server-\${TAG}.zip"
@@ -66,7 +66,7 @@ jobs:
 
           # Обязательные файлы сервера
           for f in server.py requirements.txt; do
-            test -f "\(f" \vert{}\vert{} (echo "\)f not found" && exit 1)
+            test -f "f" || (echo "f not found" && exit 1)
             cp "\$f" build_server/
           done
 
