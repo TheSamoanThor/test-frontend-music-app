@@ -19,18 +19,18 @@ jobs:
       - name: Prepare archive names
         id: vars
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
-          if [ -z "$TAG" ] || [ "$TAG" = "$GITHUB_REF" ]; then
-            TAG="dev-$(date +%Y%m%d-%H%M%S)"
+          TAG=\${GITHUB_REF#refs/tags/}
+          if [ -z "\$TAG" ] || [ "\(TAG" = "\)GITHUB_REF" ]; then
+            TAG="dev-\$(date +%Y%m%d-%H%M%S)"
           fi
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "frontend_archive=music-player-frontend-${TAG}.zip" >> $GITHUB_OUTPUT
-          echo "server_archive=music-player-server-${TAG}.zip"     >> $GITHUB_OUTPUT
-          echo "full_archive=music-player-full-${TAG}.zip"         >> $GITHUB_OUTPUT
+          echo "tag=\({TAG}" >> \)GITHUB_OUTPUT
+          echo "frontend_archive=music-player-frontend-\({TAG}.zip" >> \)GITHUB_OUTPUT
+          echo "server_archive=music-player-server-\({TAG}.zip"     >> \)GITHUB_OUTPUT
+          echo "full_archive=music-player-full-\({TAG}.zip"         >> \)GITHUB_OUTPUT
           echo "Archive names:"
-          echo "  frontend: music-player-frontend-${TAG}.zip"
-          echo "  server:   music-player-server-${TAG}.zip"
-          echo "  full:     music-player-full-${TAG}.zip"
+          echo "  frontend: music-player-frontend-\${TAG}.zip"
+          echo "  server:   music-player-server-\${TAG}.zip"
+          echo "  full:     music-player-full-\${TAG}.zip"
 
       # ---------- ФРОНТЕНД ----------
       - name: Build frontend package
@@ -66,13 +66,13 @@ jobs:
 
           # Обязательные файлы сервера
           for f in server.py requirements.txt; do
-            test -f "$f" || (echo "$f not found" && exit 1)
-            cp "$f" build_server/
+            test -f "\(f" \vert{}\vert{} (echo "\)f not found" && exit 1)
+            cp "\$f" build_server/
           done
 
           # Скрипты запуска — копируем, если есть
           for f in start_server.bat start-server.sh reset_network.bat create_zip.py create_zip.bat; do
-            [ -f "$f" ] && cp "$f" build_server/ || echo "$f отсутствует, пропущено"
+            [ -f "\$f" ] && cp "\(f" build_server/ \vert{}\vert{} echo "\)f отсутствует, пропущено"
           done
 
           # Пустая папка для музыки (сохранится в zip благодаря .gitkeep)
@@ -95,3 +95,51 @@ jobs:
           ```bash
           chmod +x start-server.sh
           ./start-server.sh
+          ```
+          EOF
+
+      # ---------- ПОЛНАЯ СБОРКА (FULL) ----------
+      - name: Build full package
+        run: |
+          rm -rf build_full
+          mkdir -p build_full
+
+          # Копируем всё из фронтенда и сервера
+          cp -r build_frontend/* build_full/
+          cp -r build_server/* build_full/
+
+          # Удаляем README отдельных частей, чтобы сделать один общий
+          rm -f build_full/README-server.md
+
+          # Создаем README для полной сборки
+          cat > build_full/README-full.md <<'EOF'
+          # Music Player — Full Bundle
+
+          Этот архив содержит как клиентскую (фронтенд), так и серверную часть.
+
+          ## Как запустить проект целиком:
+          1. Для использования локального сервера перейдите в папку и запустите сервер:
+             - Windows: `start_server.bat`
+             - Linux / macOS: `chmod +x start-server.sh && ./start-server.sh`
+          2. Откройте `index.html` в браузере или перейдите по адресу http://localhost:8000
+          EOF
+
+      # ---------- УПАКОВКА В ZIP ----------
+      - name: Create ZIP archives
+        run: |
+          zip -r \${{ steps.vars.outputs.frontend_archive }} build_frontend
+          zip -r \${{ steps.vars.outputs.server_archive }} build_server
+          zip -r \${{ steps.vars.outputs.full_archive }} build_full
+
+      # ---------- ПУБЛИКАЦИЯ РЕЛИЗА ----------
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: \${{ steps.vars.outputs.tag }}
+          name: Release \${{ steps.vars.outputs.tag }}
+          draft: false
+          prerelease: false
+          files: |
+            \${{ steps.vars.outputs.frontend_archive }}
+            \({{ steps.vars.outputs.server_archive }}\){{ steps.vars.outputs.full_archive }}
