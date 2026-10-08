@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,45 +16,82 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Prepare archive name
+      - name: Prepare archive names
         id: vars
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          echo "archive_name=music-player-${TAG}.zip" >> $GITHUB_OUTPUT
-
-      - name: Create clean release folder
-        run: |
-          rm -rf release_dist
-          mkdir -p release_dist/js
-          cp index.html release_dist/
-          cp styles.css release_dist/
-          if [ -d "js" ] && [ "$(ls -A js)" ]; then
-            cp -r js/* release_dist/js/
+          if [ -z "$TAG" ] || [ "$TAG" = "$GITHUB_REF" ]; then
+            TAG="dev-$(date +%Y%m%d-%H%M%S)"
           fi
-          # Удаляем лишние файлы
-          find release_dist -name ".DS_Store" -delete
-          find release_dist -name "*.gitkeep" -delete
-          find release_dist -name "*.md" -delete
-          find release_dist -name "LICENSE" -delete
-          echo "Contents of release_dist:"
-          ls -la release_dist/
-          echo "Contents of release_dist/js:"
-          ls -la release_dist/js/
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "frontend_archive=music-player-frontend-${TAG}.zip" >> $GITHUB_OUTPUT
+          echo "server_archive=music-player-server-${TAG}.zip"     >> $GITHUB_OUTPUT
+          echo "full_archive=music-player-full-${TAG}.zip"         >> $GITHUB_OUTPUT
+          echo "Archive names:"
+          echo "  frontend: music-player-frontend-${TAG}.zip"
+          echo "  server:   music-player-server-${TAG}.zip"
+          echo "  full:     music-player-full-${TAG}.zip"
 
-      - name: Create archive from release folder
+      # ---------- ФРОНТЕНД ----------
+      - name: Build frontend package
         run: |
-          cd release_dist
-          zip -r ../${{ steps.vars.outputs.archive_name }} .
-          echo "Archive created. Listing archive contents:"
-          unzip -l ../${{ steps.vars.outputs.archive_name }}
+          rm -rf build_frontend
+          mkdir -p build_frontend/js
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ${{ steps.vars.outputs.archive_name }}
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Обязательные файлы — падаем с ошибкой, если чего-то нет
+          test -f index.html  || (echo "index.html not found" && exit 1)
+          test -f styles.css  || (echo "styles.css not found" && exit 1)
+          test -d js          || (echo "js/ not found" && exit 1)
+
+          cp index.html build_frontend/
+          cp styles.css build_frontend/
+          cp -r js/. build_frontend/js/
+
+          # README (если есть)
+          [ -f README.md ] && cp README.md build_frontend/ || true
+
+          # Чистка мусора
+          find build_frontend -name ".DS_Store" -delete
+          find build_frontend -name "*.gitkeep" -delete
+          find build_frontend -name "*.log" -delete
+
+          echo "=== FRONTEND CONTENT ==="
+          find build_frontend -type f | sort
+
+      # ---------- СЕРВЕР ----------
+      - name: Build server package
+        run: |
+          rm -rf build_server
+          mkdir -p build_server/music
+
+          # Обязательные файлы сервера
+          for f in server.py requirements.txt; do
+            test -f "$f" || (echo "$f not found" && exit 1)
+            cp "$f" build_server/
+          done
+
+          # Скрипты запуска — копируем, если есть
+          for f in start_server.bat start-server.sh reset_network.bat create_zip.py create_zip.bat; do
+            [ -f "$f" ] && cp "$f" build_server/ || echo "$f отсутствует, пропущено"
+          done
+
+          # Пустая папка для музыки (сохранится в zip благодаря .gitkeep)
+          touch build_server/music/.gitkeep
+
+          # README сервера (создадим инструкцию только для сервера)
+          cat > build_server/README-server.md <<'EOF'
+          # Music Player — Server Bundle
+
+          Этот архив содержит только серверную часть (FastAPI + SQLite).
+
+          ## Запуск
+
+          ### Windows
+          1. Установите Python 3.10+ с https://python.org
+          2. Запустите `start_server.bat`
+          3. Откройте http://localhost:8000 или дождитесь автоматического открытия скриптом
+
+          ### Linux / macOS
+          ```bash
+          chmod +x start-server.sh
+          ./start-server.sh

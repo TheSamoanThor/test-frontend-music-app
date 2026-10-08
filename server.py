@@ -351,6 +351,56 @@ def delete_track(track_id: str) -> dict:
     write_log("track_delete", {"id": track_id})
     return {"ok": True}
 
+@app.get("/api/tracks/search")
+def search_tracks(q: str = "") -> list:
+    if not q.strip():
+        return list_tracks()
+    conn = get_db()
+    # Безопасный поиск через LIKE с защитой от SQL-инъекций
+    like_query = f"%{q.strip()}%"
+    rows = conn.execute(
+        "SELECT * FROM tracks WHERE source = 'server' AND name LIKE ? ORDER BY created_at DESC", 
+        (like_query,)
+    ).fetchall()
+    conn.close()
+    
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["stream_url"] = f"/api/stream/{d['id']}"
+        result.append(d)
+    return result
+
+@app.get("/api/tracks/radio")
+def get_radio_tracks(tag: Optional[str] = None, limit: int = 20) -> list:
+    conn = get_db()
+    
+    if tag and tag.strip():
+        # Если передан тег, ищем треки, у которых в таблице tags сохранен этот тег
+        # Таблица tags хранит данные в формате JSON: track_id PRIMARY KEY, value TEXT (список тегов)
+        like_tag = f'%"{tag.strip()}"%'
+        rows = conn.execute(
+            """SELECT t.* FROM tracks t 
+               JOIN tags tg ON t.id = tg.track_id 
+               WHERE t.source = 'server' AND tg.value LIKE ? 
+               ORDER BY RANDOM() LIMIT ?""",
+            (like_tag, limit)
+        ).fetchall()
+    else:
+        # Если тега нет, просто берем случайные треки с сервера
+        rows = conn.execute(
+            "SELECT * FROM tracks WHERE source = 'server' ORDER BY RANDOM() LIMIT ?",
+            (limit,)
+        ).fetchall()
+        
+    conn.close()
+    
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["stream_url"] = f"/api/stream/{d['id']}"
+        result.append(d)
+    return result
 
 # ====================== API: STREAM (с Range) ======================
 @app.get("/api/stream/{track_id}")

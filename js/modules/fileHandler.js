@@ -75,13 +75,35 @@ var FileHandler = class FileHandler {
         return new Promise((resolve) => {
             const audio = new Audio();
             audio.src = URL.createObjectURL(file);
+            
+            let resolved = false;
+            const cleanup = () => {
+                resolved = true;
+                clearTimeout(failSafeTimeout);
+                URL.revokeObjectURL(audio.src);
+            };
+
+            // Предохранитель: если за 4 секунды браузер не отдаст метаданные, возвращаем 0
+            const failSafeTimeout = setTimeout(() => {
+                if (!resolved) {
+                    cleanup();
+                    resolve(0);
+                }
+            }, 4000);
+
             audio.addEventListener('loadedmetadata', () => {
-                resolve(audio.duration);
-                URL.revokeObjectURL(audio.src);
+                if (!resolved) {
+                    const duration = audio.duration;
+                    cleanup();
+                    resolve(duration);
+                }
             });
+
             audio.addEventListener('error', () => {
-                resolve(0);
-                URL.revokeObjectURL(audio.src);
+                if (!resolved) {
+                    cleanup();
+                    resolve(0);
+                }
             });
         });
     }

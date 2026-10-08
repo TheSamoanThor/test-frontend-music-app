@@ -133,7 +133,6 @@ var Player = class Player {
                     this.currentObjectUrl = null;
                 }
                 this.currentTrack = track;
-                // Загрузка интервалов громкости для трека (если есть id)
                 if (track.id) {
                     this.currentVolumeIntervals = await this.db.getVolumeIntervals(track.id) || [];
                 } else {
@@ -141,12 +140,19 @@ var Player = class Player {
                 }
                 this.activeVolumeInterval = null;
                 this.audio.src = track.streamUrl;
+                
                 return new Promise((resolve) => {
                     let resolved = false;
+                    
+                    const cleanup = () => {
+                        this.audio.removeEventListener('canplaythrough', onCanPlay);
+                        this.audio.removeEventListener('error', onError);
+                    };
+
                     let timeoutId = setTimeout(() => {
                         if (!resolved) {
                             resolved = true;
-                            cleanup();
+                            cleanup(); // Важно: очищаем события при таймауте!
                             console.error(`Timeout loading stream for ${track.name}`);
                             resolve(false);
                         }
@@ -165,6 +171,7 @@ var Player = class Player {
                             resolve(true);
                         }).catch(() => resolve(false));
                     };
+
                     const onError = () => {
                         if (resolved) return;
                         resolved = true;
@@ -173,10 +180,7 @@ var Player = class Player {
                         console.error(`Failed to load stream for ${track.name}`);
                         resolve(false);
                     };
-                    const cleanup = () => {
-                        this.audio.removeEventListener('canplaythrough', onCanPlay);
-                        this.audio.removeEventListener('error', onError);
-                    };
+
                     this.audio.addEventListener('canplaythrough', onCanPlay);
                     this.audio.addEventListener('error', onError);
                     this.audio.load();
@@ -536,9 +540,18 @@ var Player = class Player {
         await this.db.setQueue(queueIds);
     }
 
-    addStreamTracks(tracks) {
+    async addStreamTracks(tracks) {
+        const streamOnly = tracks.filter(t => !t.id);
         this.queue.push(...tracks);
+        await this.saveQueue();
         if (this.ui) this.ui.renderQueue(this.queue);
+
+        if (streamOnly.length > 0) {
+            console.info(
+                `[Player] Добавлено ${streamOnly.length} стрим-треков без id — ` +
+                `они не сохранятся в очереди между сессиями.`
+            );
+        }
     }
 
     toggleRepeat() {

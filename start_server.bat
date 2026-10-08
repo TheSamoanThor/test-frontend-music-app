@@ -23,17 +23,28 @@ if not exist "venv" (
 REM Активируем venv
 call venv\Scripts\activate.bat
 
-REM Обновляем pip до актуальной версии
-echo [SETUP] Обновляю pip...
-python -m pip install --upgrade pip
-
-@REM  REM Устанавливаем зависимости из файла requirements.txt
-@REM  echo [SETUP] Устанавливаем зависимости...
-@REM  pip install -r requirements.txt
-
-REM Устанавливаем зависимости в обход строгой проверки SSL-сертификатов
-echo [SETUP] Устанавливаем зависимости в обход SSL...
-pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
+REM Проверяем, установлена ли уже fastapi, чтобы не лезть в сеть без нужды
+python -c "import fastapi" >nul 2>&1
+if errorlevel 1 (
+    echo [SETUP] Зависимости не найдены. Пытаемся установить...
+    
+    REM Обновляем pip
+    python -m pip install --upgrade pip
+    
+    REM Устанавливаем зависимости в обход SSL
+    pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
+    
+    REM Финальная проверка установки
+    python -c "import fastapi" >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo [ОШИБКА] Не удалось установить пакеты. Проверьте интернет-соединение!
+        pause
+        exit /b 1
+    )
+) else (
+    echo [SETUP] Все необходимые библиотеки уже установлены в venv. Скрипт установки пропущен.
+)
 
 REM Запускаем сервер
 echo.

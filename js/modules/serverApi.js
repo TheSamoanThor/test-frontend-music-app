@@ -120,6 +120,38 @@ var ServerApi = {
         return res && res.ok;
     },
 
+    async searchTracks(query) {
+        const res = await this._fetch(`/api/tracks/search?q=${encodeURIComponent(query)}`);
+        if (res && res.ok && Array.isArray(res.data)) {
+            return res.data.map(t => {
+                const track = { ...t };
+                if (t.stream_url) {
+                    track.streamUrl = t.stream_url.startsWith('/') ? this.baseUrl + t.stream_url : t.stream_url;
+                }
+                return track;
+            });
+        }
+        return [];
+    },
+
+    async getRadioTracks(tag = null, limit = 20) {
+        let path = `/api/tracks/radio?limit=${limit}`;
+        if (tag) {
+            path += `&tag=${encodeURIComponent(tag)}`;
+        }
+        const res = await this._fetch(path);
+        if (res && res.ok && Array.isArray(res.data)) {
+            return res.data.map(t => {
+                const track = { ...t };
+                if (t.stream_url) {
+                    track.streamUrl = t.stream_url.startsWith('/') ? this.baseUrl + t.stream_url : t.stream_url;
+                }
+                return track;
+            });
+        }
+        return [];
+    },
+
     /** Загрузка файлов (multipart). */
     async uploadFiles(files) {
         const form = new FormData();

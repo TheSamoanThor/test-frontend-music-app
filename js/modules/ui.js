@@ -1686,15 +1686,16 @@ var UI = class UI {
                         delete this.playlistOpenState[pl.id];
                         this.showToast(`Плейлист "${pl.name}" удалён`, 'success');
                         
-                        // КРИТИЧНО: Перерисовываем интерфейс и ЖЕСТКО прерываем текущий цикл выполнения
-                        await this.renderPlaylists();
-                        return; 
+                        // Безопасно обновляем список плейлистов:
+                        // Рендер запускается асинхронно после завершения текущей задачи
+                        setTimeout(() => this.renderPlaylists(), 0);
                     } catch (error) {
                         console.error('Ошибка удаления плейлиста:', error);
                         Modal.alert('Не удалось удалить плейлист', 'Ошибка');
                     }
                 }
             });
+
 
 
             if (this.playlistOpenState[pl.id]) {
@@ -2050,7 +2051,7 @@ var UI = class UI {
         }
 
         await this.player.clearQueue();
-        this.player.addStreamTracks(tracks);
+        await this.player.addStreamTracks(tracks);
         await this.player.loadTrack(tracks[0]);
         this.player.play();
 
@@ -2107,20 +2108,24 @@ var UI = class UI {
         const track = await this.db.getTrack(trackId);
         if (!track) return;
 
-        // Удаление с сервера, если трек оттуда
-        if (track.source === 'server' && ServerApi.isAvailable()) {
-            try {
-                await ServerApi.deleteTrack(trackId);
-            } catch (err) {
-                console.error("Не удалось удалить трек с сервера:", err);
-            }
-        }
-
         const confirmed = await Modal.confirm(
             `Удалить трек "${track.name}" из библиотеки?`,
             'Удаление трека'
         );
         if (!confirmed) return;
+
+        // Удаление с сервера — только после явного подтверждения
+        if (track.source === 'server' && ServerApi.isAvailable()) {
+            try {
+                const ok = await ServerApi.deleteTrack(trackId);
+                if (!ok) {
+                    console.warn(`[deleteTrack] Сервер не подтвердил удаление ${trackId}`);
+                    this.showToast('Файл на сервере удалить не удалось', 'error');
+                }
+            } catch (err) {
+                console.error('Не удалось удалить трек с сервера:', err);
+            }
+        }
 
         const queueIndex = this.player.queue.findIndex(t => t.id === trackId);
         if (queueIndex !== -1) {
@@ -2753,7 +2758,7 @@ var UI = class UI {
     }
 
     /**
-     * Поиск на сервере (заглушка + лог на сервер).
+     * Поиск на сервере
      */
     async serverSearch() {
         const input = document.getElementById('server-search-input');
@@ -2764,19 +2769,161 @@ var UI = class UI {
             this.showToast('Сервер недоступен. Запустите сервер, чтобы искать музыку.', 'error');
             return;
         }
-        // TODO: реальный поиск на сервере появится в следующих итерациях
-        this.showToast(`Поиск "${query}" на сервере пока не реализован`, 'info');
+
+        const resultsEl = document.getElementById('server-results');
+        if (!resultsEl) return;
+
+        resultsEl.innerHTML = '<div>Поиск на сервере...</div>';
+        
+        try {
+            const tracks = await ServerApi.searchTracks(query);
+            if (!tracks.length) {
+                resultsEl.innerHTML = '<div>Ничего не найдено.</div>';
+                return;
+            }
+
+            resultsEl.innerHTML = '';
+            for (let track of tracks) {
+                const li = document.createElement('li');
+                li.className = 'track-item';
+                li.innerHTML = `
+                    <span><strong>${utils.escapeHtml(track.name || 'Без названия')}</strong> (${utils.formatTime(track.duration || 0)})</span>
+                    <div class="track-tags">Источник: ${utils.escapeHtml(track.source || 'server')}</div>
+                    <div>
+                        <button class="server-add-to-queue" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
+                        <button class="server-play-now" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
+                        <button class="server-delete" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить с сервера</button>
+                    </div>
+                `;
+                resultsEl.appendChild(li);
+            }
+            
+            // Навешиваем заново обработчики кликов на найденные элементы
+            resultsEl.querySelectorAll('.server-add-to-queue').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    const track = tracks.find(t => t.id === id);
+                    if (!track) return;
+                    const existing = await this.db.getTrack(track.id);
+                    if (!existing) await this.db.addTrack(track);
+                    await this.player.addToQueue([track]);
+                    this.showToast('Трек добавлен в очередь', 'success');
+                });
+            });
+            resultsEl.querySelectorAll('.server-play-now').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    const track = tracks.find(t => t.id === id);
+                    if (!track) return;
+                    const existing = await this.db.getTrack(track.id);
+                    if (!existing) await this.db.addTrack(track);
+                    await this.player.playNow(track);
+                });
+            });
+            resultsEl.querySelectorAll('.server-delete').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    const track = tracks.find(t => t.id === id);
+                    if (!track) return;
+                    const ok = await Modal.confirm(`Удалить трек "${track.name}" с сервера?`, 'Подтверждение');
+                    if (!ok) return;
+                    const deleted = await ServerApi.deleteTrack(id);
+                    if (deleted) {
+                        await this.db.deleteTrack(id);
+                        this.showToast('Трек удалён с сервера', 'success');
+                        this.serverSearch(); // перерисовываем поиск с учетом удаления
+                    } else {
+                        Modal.alert('Не удалось удалить трек', 'Ошибка');
+                    }
+                });
+            });
+
+        } catch (err) {
+            console.error("Ошибка поиска на сервере:", err);
+            resultsEl.innerHTML = '<div>Ошибка при выполнении поиска.</div>';
+        }
     }
 
+
     /**
-     * Радио на сервере (заглушка + лог).
+     * Радио на сервере
      */
     async serverRadio() {
         ServerApi.log('server_radio_click', {});
+        
         if (!ServerApi.isAvailable()) {
             this.showToast('Сервер недоступен. Запустите сервер, чтобы слушать радио.', 'error');
             return;
         }
-        this.showToast('Радио на своём сервере пока не реализовано', 'info');
+
+        const input = document.getElementById('server-search-input');
+        // Если пользователь ввел что-то в поле поиска, используем это как тег настройки волны
+        const potentialTag = input ? input.value.trim() : '';
+        
+        const resultsEl = document.getElementById('server-results');
+        if (resultsEl) {
+            resultsEl.innerHTML = potentialTag 
+                ? `<div>Настраиваем «Мою волну» под тег: <strong>${utils.escapeHtml(potentialTag)}</strong>...</div>`
+                : `<div>Включаем «Мою волну» (случайный микс всех треков сервера)...</div>`;
+        }
+
+        try {
+            // Запрашиваем 20 случайных треков с сервера (с фильтром по тегу или без)
+            const tracks = await ServerApi.getRadioTracks(potentialTag || null, 20);
+            
+            if (!tracks || !tracks.length) {
+                this.showToast(potentialTag 
+                    ? `Нет треков с тегом "${potentialTag}" на сервере` 
+                    : 'На сервере нет доступных треков для радио', 'error');
+                if (resultsEl) {
+                    resultsEl.innerHTML = `<div>Ничего не найдено для радио волны. Убедитесь, что треки загружены${potentialTag ? ' и им присвоен нужный тег' : ''}.</div>`;
+                }
+                return;
+            }
+
+            // Переносим треки в локальное IndexedDB, если их там ещё нет (для стабильной работы очереди)
+            for (let track of tracks) {
+                const existing = await this.db.getTrack(track.id);
+                if (!existing) {
+                    await this.db.addTrack(track);
+                }
+            }
+
+            // Полностью очищаем текущую плеерную очередь
+            await this.player.clearQueue();
+            
+            // Загружаем сгенерированную сервером случайную пачку в плеер
+            await this.player.addToQueue(tracks);
+            
+            // Запускаем воспроизведение первого случайного трека
+            this.player.currentIndex = 0;
+            const success = await this.player.loadTrack(tracks[0]);
+            
+            if (success) {
+                this.player.play();
+                this.showToast(potentialTag 
+                    ? `«Моя волна» (${potentialTag}) успешно запущена!` 
+                    : '«Моя волна» запущена!', 'success');
+                
+                if (resultsEl) {
+                    const tagLabel = potentialTag
+                        ? `по тегу "${utils.escapeHtml(potentialTag)}"`
+                        : '(микс)';
+                    resultsEl.innerHTML =
+                        `<div>Играет «Моя волна» ${tagLabel}. ` +
+                        `В очереди ${tracks.length} случайных треков.</div>`;
+                }
+            } else {
+                this.showToast('Не удалось запустить аудиопоток радио', 'error');
+            }
+
+        } catch (err) {
+            console.error("Ошибка генерации волны радио:", err);
+            this.showToast('Критическая ошибка при запуске радио', 'error');
+            if (resultsEl) resultsEl.innerHTML = '<div>Не удалось построить радио-волну.</div>';
+        }
     }
 };
