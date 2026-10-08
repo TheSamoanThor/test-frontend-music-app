@@ -129,9 +129,9 @@ jobs:
       # ---------- УПАКОВКА В ZIP ----------
       - name: Create ZIP archives
         run: |
-          zip -r \${{ steps.vars.outputs.frontend_archive }} build_frontend
-          zip -r \${{ steps.vars.outputs.server_archive }} build_server
-          zip -r \${{ steps.vars.outputs.full_archive }} build_full
+          zip -r "\${{ steps.vars.outputs.frontend_archive }}" build_frontend
+          zip -r "\${{ steps.vars.outputs.server_archive }}" build_server
+          zip -r "\${{ steps.vars.outputs.full_archive }}" build_full
 
       # ---------- ПУБЛИКАЦИЯ РЕЛИЗА ----------
       - name: Create Release
