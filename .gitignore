@@ -25,3 +25,6 @@ music.db
 /music
 *.sqlite
 *.db
+
+# sensetive data
+.env

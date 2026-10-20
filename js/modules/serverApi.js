@@ -31,12 +31,15 @@ var ServerApi = {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
         try {
+            const headers = { ...(options.headers || {}) };
+            const token = this._db ? await this._db.getSetting('server_api_token') : null;
+            if (token) headers.Authorization = `Bearer ${token}`;
+
             const response = await fetch(this.baseUrl + path, {
                 ...options,
+                credentials: 'include',
                 signal: controller.signal,
-                headers: {
-                    ...(options.headers || {})
-                }
+                headers,
             });
             clearTimeout(timeout);
             let data = null;
@@ -157,12 +160,20 @@ var ServerApi = {
         const form = new FormData();
         for (const f of files) form.append('files', f, f.name);
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 120000); // 2 мин на загрузку
+        const timeout = setTimeout(() => controller.abort(), 120000);
         try {
+            const headers = {};
+            // Если в IndexedDB сохранён токен — прикладываем его.
+            // Cookie-auth работает через credentials:'include', token-режим — через Bearer.
+            const token = this._db ? await this._db.getSetting('server_api_token') : null;
+            if (token) headers.Authorization = `Bearer ${token}`;
+
             const response = await fetch(this.baseUrl + '/api/upload', {
                 method: 'POST',
                 body: form,
-                signal: controller.signal
+                credentials: 'include',
+                signal: controller.signal,
+                headers,
             });
             clearTimeout(timeout);
             if (!response.ok) return null;
@@ -293,5 +304,29 @@ var ServerApi = {
             body: JSON.stringify(data)
         });
         return res && res.ok;
-    }
+    },
+
+    // --- auth ---
+    async login(username, password) {
+        const res = await this._fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',            // ← важно для cookie
+            body: JSON.stringify({ username, password })
+        });
+        return res && res.ok ? res.data : null;
+    },
+
+    async logout() {
+        const res = await this._fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        return res && res.ok;
+    },
+
+    async me() {
+        const res = await this._fetch('/api/auth/me', { credentials: 'include' });
+        return res && res.ok ? res.data : null;
+    },
 };

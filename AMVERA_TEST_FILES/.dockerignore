@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+.env
+music/
+music.db
+music.db-wal
+music.db-shm
+server.log
+.git/

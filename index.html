@@ -334,6 +334,23 @@
                     </div>
                 </div>
 
+                <div class="settings-section" id="auth-section">
+                    <h3>Вход на сервер</h3>
+                    <div class="setting-item">
+                        <label for="auth-username">Пользователь:</label>
+                        <input type="text" id="auth-username" class="modal-input" style="flex:1;">
+                    </div>
+                    <div class="setting-item">
+                        <label for="auth-password">Пароль:</label>
+                        <input type="password" id="auth-password" class="modal-input" style="flex:1;">
+                    </div>
+                    <div class="setting-item">
+                        <button id="auth-login-btn">Войти</button>
+                        <button id="auth-logout-btn">Выйти</button>
+                        <span id="auth-status" class="server-status-checking"></span>
+                    </div>
+                </div>
+
                 <div class="settings-section">
                     <h3>Исключённые треки</h3>
                     <ul id="excluded-tracks-list" class="excluded-list"></ul>

@@ -12,6 +12,7 @@ var UI = class UI {
         this.trackProgressHandler = null;
         this.trackDetailVisualizerCallback = null;
         this.playlistOpenState = {};
+        this.currentServerRole = null;
 
         this.fileHandler.onAccessLost = this.handleFileAccessLost.bind(this);
 
@@ -259,6 +260,48 @@ var UI = class UI {
         if (pageSyncUp) pageSyncUp.addEventListener('click', () => this.syncUploadToServer());
         const pageSyncDown = document.getElementById('server-page-sync-download');
         if (pageSyncDown) pageSyncDown.addEventListener('click', () => this.syncDownloadFromServer());
+        const authLoginBtn = document.getElementById('auth-login-btn');
+        if (authLoginBtn) {
+            authLoginBtn.addEventListener('click', async () => {
+                const u = document.getElementById('auth-username').value.trim();
+                const p = document.getElementById('auth-password').value;
+                if (!u || !p) return;
+
+                const result = await ServerApi.login(u, p);
+                const status = document.getElementById('auth-status');
+
+                if (result && result.ok) {
+                    // role может быть null в token-режиме, а mode === 'bearer'
+                    const roleLabel = result.role
+                        || (result.mode === 'bearer' ? 'token (admin)' : 'anonymous');
+                    if (status) {
+                        status.textContent = `Вы вошли как ${u} (${roleLabel})`;
+                        status.className = 'server-status server-status-online';
+                    }
+                    document.getElementById('auth-password').value = '';
+                    this.showToast('Вход выполнен', 'success');
+                    await this.checkServerConnection();
+                } else {
+                    if (status) {
+                        status.textContent = 'Неверный логин или пароль';
+                        status.className = 'server-status server-status-offline';
+                    }
+                    this.showToast('Неверный логин или пароль', 'error');
+                }
+            });
+        }
+
+        const authLogoutBtn = document.getElementById('auth-logout-btn');
+        if (authLogoutBtn) {
+            authLogoutBtn.addEventListener('click', async () => {
+                await ServerApi.logout();
+                const status = document.getElementById('auth-status');
+                if (status) {
+                    status.textContent = 'Вы вышли';
+                    status.className = 'server-status server-status-checking';
+                }
+            });
+        }
     }
 
     async initLibraryClickBehavior() {
@@ -2516,17 +2559,68 @@ var UI = class UI {
             badge.textContent = 'Проверка...';
             badge.className = 'server-status server-status-checking';
         }
+
         const ok = await ServerApi.healthCheck(true);
-        this.updateServerStatusBadge();
-        if (ok) {
-            // Сообщаем серверу о настройке логирования
+        if (!ok) {
+            this.updateServerStatusBadge();
+            this.showToast('Сервер недоступен', 'error');
+            this.applyRoleToUI(null);
+            return false;
+        }
+
+        const me = await ServerApi.me();
+        if (me && me.auth_enabled && !me.logged_in) {
+            if (badge) {
+                badge.textContent = 'Требуется вход';
+                badge.className = 'server-status server-status-offline';
+            }
+            this.showToast('Сервер требует вход — введите логин и пароль', 'info');
+            this.applyRoleToUI(null);
+            return false;
+        }
+
+        // Запоминаем роль для управления видимостью кнопок
+        const role = (me && me.role) || (me && me.mode === 'off' ? 'admin' : null);
+        this.applyRoleToUI(role);
+
+        // setLogConfig — только для админа, иначе 403
+        if (role === 'admin') {
             const logEnabled = await this.db.getSetting('server_log_enabled');
             await ServerApi.setLogConfig(logEnabled === true);
-            this.showToast('Сервер доступен', 'success');
-        } else {
-            this.showToast('Сервер недоступен', 'error');
         }
-        return ok;
+
+        if (badge) {
+            const roleLabel = role || 'anonymous';
+            badge.textContent = `Сервер доступен (${roleLabel})`;
+            badge.className = 'server-status server-status-online';
+        }
+        return true;
+    }
+
+    /**
+     * Скрывает/показывает admin-only элементы UI, если роль не admin.
+     * @param {string|null} role  'admin' | 'listener' | null
+     */
+    applyRoleToUI(role) {
+        this.currentServerRole = role;
+        const adminOnlyIds = [
+            'server-page-upload-btn',
+            'server-page-scan-btn',
+            'server-page-sync-upload',
+            'server-page-sync-download',
+            'server-log-enabled',
+            'server-upload-music-btn',
+            'server-scan-btn',
+            'sync-upload-btn',
+            'sync-download-btn',
+        ];
+        const isAdmin = role === 'admin';
+        for (const id of adminOnlyIds) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            el.style.display = isAdmin ? '' : 'none';
+            el.disabled = !isAdmin;
+        }
     }
 
     // ========== СИНХРОНИЗАЦИЯ ==========
@@ -2693,16 +2787,20 @@ var UI = class UI {
         }
 
         resultsEl.innerHTML = '';
+        const isAdmin = this.currentServerRole === 'admin';
         for (let track of tracks) {
             const li = document.createElement('li');
             li.className = 'track-item';
+            const deleteBtn = isAdmin
+                ? `<button class="server-delete" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить с сервера</button>`
+                : '';
             li.innerHTML = `
                 <span><strong>${utils.escapeHtml(track.name || 'Без названия')}</strong> (${utils.formatTime(track.duration || 0)})</span>
                 <div class="track-tags">Источник: ${utils.escapeHtml(track.source || 'server')}</div>
                 <div>
                     <button class="server-add-to-queue" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
                     <button class="server-play-now" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
-                    <button class="server-delete" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить с сервера</button>
+                    ${deleteBtn}
                 </div>
             `;
             resultsEl.appendChild(li);
@@ -2783,16 +2881,20 @@ var UI = class UI {
             }
 
             resultsEl.innerHTML = '';
+            const isAdmin = this.currentServerRole === 'admin';
             for (let track of tracks) {
                 const li = document.createElement('li');
                 li.className = 'track-item';
+                const deleteBtn = isAdmin
+                    ? `<button class="server-delete" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить с сервера</button>`
+                    : '';
                 li.innerHTML = `
                     <span><strong>${utils.escapeHtml(track.name || 'Без названия')}</strong> (${utils.formatTime(track.duration || 0)})</span>
                     <div class="track-tags">Источник: ${utils.escapeHtml(track.source || 'server')}</div>
                     <div>
                         <button class="server-add-to-queue" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg> В очередь</button>
                         <button class="server-play-now" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-play"></use></svg>Воспроизвести</button>
-                        <button class="server-delete" data-id="${utils.escapeHtml(track.id)}"><svg class="icon"><use href="#icon-trash"></use></svg> Удалить с сервера</button>
+                        ${deleteBtn}
                     </div>
                 `;
                 resultsEl.appendChild(li);

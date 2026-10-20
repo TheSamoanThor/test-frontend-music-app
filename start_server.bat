@@ -23,18 +23,12 @@ if not exist "venv" (
 REM Активируем venv
 call venv\Scripts\activate.bat
 
-REM Проверяем, установлена ли уже fastapi, чтобы не лезть в сеть без нужды
+REM Проверяем, установлены ли зависимости
 python -c "import fastapi" >nul 2>&1
 if errorlevel 1 (
     echo [SETUP] Зависимости не найдены. Пытаемся установить...
-    
-    REM Обновляем pip
     python -m pip install --upgrade pip
-    
-    REM Устанавливаем зависимости в обход SSL
     pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
-    
-    REM Финальная проверка установки
     python -c "import fastapi" >nul 2>&1
     if errorlevel 1 (
         echo.
@@ -43,8 +37,13 @@ if errorlevel 1 (
         exit /b 1
     )
 ) else (
-    echo [SETUP] Все необходимые библиотеки уже установлены в venv. Скрипт установки пропущен.
+    echo [SETUP] Зависимости уже установлены в venv. Скрипт установки пропущен.
 )
+
+REM Подсказка про .env (без скобок в echo, чтобы cmd не спотыкался)
+set "ENV_HINT=[ENV] .env не найден, работаем в локальном режиме."
+if exist ".env" set "ENV_HINT=[ENV] Найден .env - переменные окружения будут прочитаны из него."
+echo %ENV_HINT%
 
 REM Запускаем сервер
 echo.

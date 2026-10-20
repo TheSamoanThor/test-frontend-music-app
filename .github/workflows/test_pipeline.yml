@@ -58,8 +58,11 @@ jobs:
           [ -f start_server.bat ] && cp start_server.bat build_server/ || true
           [ -f start-server.sh ] && cp start-server.sh build_server/ || true
           [ -f reset_network.bat ] && cp reset_network.bat build_server/ || true
-          [ -f create_zip.py ] && cp create_zip.py build_server/ || true
-          [ -f create_zip.bat ] && cp create_zip.bat build_server/ || true
+          [ -f make_passwords.py ] && cp make_passwords.py build_server/ || true
+          [ -f .env.example ]      && cp .env.example build_server/ || true
+          [ -f Dockerfile ]        && cp Dockerfile build_server/ || true
+          [ -f .dockerignore ]     && cp .dockerignore build_server/ || true
+          [ -f README-server.md ]  && cp README-server.md build_server/ || true
 
           # Пустая папка для музыки
           touch build_server/music/.gitkeep
