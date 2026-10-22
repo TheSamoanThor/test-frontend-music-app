@@ -473,13 +473,16 @@ app = FastAPI(
 # Браузер запрещает `Access-Control-Allow-Origin: null` вместе с
 # `Access-Control-Allow-Credentials: true`, поэтому для file:// (Origin: null)
 # и для '*' режим с куками невозможен в принципе.
+# CORS: если среди origin есть '*' или 'null' — credentials выключаем.
 _cors_has_wildcard = ("*" in CORS_ORIGINS) or ("null" in CORS_ORIGINS)
 
 if CORS_ORIGINS != ["*"]:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
-        allow_credentials=not _cors_has_wildcard,
+        # Если в списке есть null (для file://), мы не можем ставить True,
+        # иначе браузер выдаст ошибку. Поэтому ставим False для всех.
+        allow_credentials=not _cors_has_wildcard, 
         allow_methods=["*"],
         allow_headers=["*"],
         expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"],

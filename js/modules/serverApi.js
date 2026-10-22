@@ -37,12 +37,23 @@ var ServerApi = {
             const token = this._db ? await this._db.getSetting('server_api_token') : null;
             if (token) headers.Authorization = `Bearer ${token}`;
 
-            const response = await fetch(this.baseUrl + path, {
+            // --- ГЛАВНАЯ ЛОГИКА АВТОРИЗАЦИИ ---
+            const isFileProtocol = window.location.protocol === 'file:';
+            
+            const fetchOptions = {
                 ...options,
-                credentials: 'include', // для куки на продакшене
                 signal: controller.signal,
                 headers,
-            });
+            };
+
+            // Если мы открыты с локального файла (file://), 
+            // куки отправлять НЕЛЬЗЯ (браузер выдаст CORS-ошибку).
+            // Поэтому на file:// мы полагаемся ТОЛЬКО на Bearer-токен.
+            if (!isFileProtocol) {
+                fetchOptions.credentials = 'include';
+            }
+
+            const response = await fetch(this.baseUrl + path, fetchOptions);
             clearTimeout(timeout);
             let data = null;
             const text = await response.text();
@@ -204,18 +215,22 @@ var ServerApi = {
         const timeout = setTimeout(() => controller.abort(), 120000);
         try {
             const headers = {};
-            // Если в IndexedDB сохранён токен — прикладываем его.
-            // Cookie-auth работает через credentials:'include', token-режим — через Bearer.
             const token = this._db ? await this._db.getSetting('server_api_token') : null;
             if (token) headers.Authorization = `Bearer ${token}`;
 
-            const response = await fetch(this.baseUrl + '/api/upload', {
+            const isFileProtocol = window.location.protocol === 'file:';
+            const fetchOptions = {
                 method: 'POST',
                 body: form,
-                credentials: 'include',
                 signal: controller.signal,
                 headers,
-            });
+            };
+            
+            if (!isFileProtocol) {
+                fetchOptions.credentials = 'include';
+            }
+
+            const response = await fetch(this.baseUrl + '/api/upload', fetchOptions);
             clearTimeout(timeout);
             if (!response.ok) return null;
             return await response.json();
