@@ -54,14 +54,14 @@ jobs:
           cp server.py build_server/
           cp requirements.txt build_server/
 
-          # Скрипты запуска (копируем только если они физически существуют)
+          # Скрипты запуска и другие полезные файлы (копируем только если они физически существуют)
           [ -f start_server.bat ] && cp start_server.bat build_server/ || true
           [ -f start-server.sh ] && cp start-server.sh build_server/ || true
           [ -f reset_network.bat ] && cp reset_network.bat build_server/ || true
           [ -f make_passwords.py ] && cp make_passwords.py build_server/ || true
+          [ -f setup_env.py ] && cp make_passwords.py build_server/ || true
+          [ -f setup_env.bat ] && cp make_passwords.py build_server/ || true
           [ -f .env.example ]      && cp .env.example build_server/ || true
-          [ -f Dockerfile ]        && cp Dockerfile build_server/ || true
-          [ -f .dockerignore ]     && cp .dockerignore build_server/ || true
           [ -f README-server.md ]  && cp README-server.md build_server/ || true
 
           # Пустая папка для музыки

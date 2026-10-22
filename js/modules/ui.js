@@ -302,6 +302,46 @@ var UI = class UI {
                 }
             });
         }
+
+        if (window.location.protocol === 'file:') {
+            // Показываем поле токена
+            const tokenItem = document.getElementById('auth-token-item');
+            if (tokenItem) tokenItem.style.display = 'flex';
+
+            // Скрываем cookie-логин: с file:// куки не отправляются (другой origin,
+            // SameSite=lax, secure и т.п.), поэтому кнопки входа/выхода бесполезны.
+            const loginBtn = document.getElementById('auth-login-btn');
+            const logoutBtn = document.getElementById('auth-logout-btn');
+            const userInp = document.getElementById('auth-username');
+            const passInp = document.getElementById('auth-password');
+            const authStatus = document.getElementById('auth-status');
+
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+            if (userInp) userInp.parentElement.style.display = 'none';
+            if (passInp) passInp.parentElement.style.display = 'none';
+            if (authStatus) {
+                authStatus.textContent = 'Режим file:// — используйте токен';
+                authStatus.className = 'server-status server-status-checking';
+            }
+        }
+
+        const authTokenSave = document.getElementById('auth-token-save');
+        if (authTokenSave) {
+            authTokenSave.addEventListener('click', async () => {
+                const token = document.getElementById('auth-token').value.trim();
+                if (token) {
+                    await this.db.setSetting('server_api_token', token);
+                    this.showToast('Токен сохранён', 'success');
+                    // Проверяем соединение, чтобы убедиться, что токен рабочий
+                    await this.checkServerConnection();
+                } else {
+                    await this.db.deleteSetting('server_api_token');
+                    this.showToast('Токен удалён', 'info');
+                    await this.checkServerConnection();
+                }
+            });
+        }
     }
 
     async initLibraryClickBehavior() {
@@ -1122,8 +1162,15 @@ var UI = class UI {
         input.accept = 'application/json';
         input.onchange = async (e) => {
             const file = e.target.files[0];
+            if (!file) return;
             const text = await file.text();
-            const data = JSON.parse(text);
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                Modal.alert('Файл не является корректным JSON', 'Ошибка импорта');
+                return;
+            }
             await this.db.importData(data);
             await this.player.loadQueue();
             this.renderLibrary();
@@ -1131,7 +1178,8 @@ var UI = class UI {
             this.syncSettingsPage();
             await this.initLibraryClickBehavior();
             await Modal.alert(
-                'Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.',
+                'Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.\n\n' +
+                'Токен сервера (если был) в бэкап не входит и не импортируется.',
                 'Импорт данных'
             );
         };
@@ -1304,6 +1352,17 @@ var UI = class UI {
                 this.player.visualizerWaveSymX = e.target.checked;
                 await this.player.saveVisualizerSettings();
             });
+        }
+
+        if (window.location.protocol === 'file:') {
+            const loginBtn = document.getElementById('auth-login-btn');
+            const logoutBtn = document.getElementById('auth-logout-btn');
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+            const userInp = document.getElementById('auth-username');
+            const passInp = document.getElementById('auth-password');
+            if (userInp) userInp.parentElement.style.display = 'none';
+            if (passInp) passInp.parentElement.style.display = 'none';
         }
     }
 
@@ -2453,7 +2512,9 @@ var UI = class UI {
         statusEl.className = 'server-status server-status-checking';
 
         // Логируем открытие страницы (тихо, если сервер недоступен)
-        ServerApi.log('server_page_open', { hash: window.location.hash });
+        if (this.currentServerRole === 'admin') {
+            ServerApi.log('server_page_open', { hash: window.location.hash });
+        }
 
         const ok = await ServerApi.healthCheck(true);
 
@@ -2477,6 +2538,15 @@ var UI = class UI {
     async loadServerSettingsIntoUI() {
         const input = document.getElementById('server-url-input');
         if (input) input.value = ServerApi.baseUrl;
+
+        // Если открыто через file://, подгружаем сохранённый токен
+        if (window.location.protocol === 'file:') {
+            const tokenInput = document.getElementById('auth-token');
+            if (tokenInput) {
+                const savedToken = await this.db.getSetting('server_api_token');
+                tokenInput.value = savedToken || '';
+            }
+        }
 
         const logCheckbox = document.getElementById('server-log-enabled');
         if (logCheckbox) {

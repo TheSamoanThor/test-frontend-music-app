@@ -321,8 +321,13 @@ var Database = class Database {
             this.stores.tags,
             this.stores.tagVolumes,
             this.stores.playlists,
-            this.stores.volumeIntervals  // добавлено
+            this.stores.volumeIntervals
         ];
+        // Ключи settings, которые НЕ попадают в бэкап (чувствительные данные).
+        const SENSITIVE_SETTING_KEYS = new Set([
+            'server_api_token',
+        ]);
+
         const data = {};
         for (let storeName of stores) {
             const tx = this.db.transaction(storeName, 'readonly');
@@ -334,10 +339,16 @@ var Database = class Database {
             });
 
             if (storeName === this.stores.tracks) {
+                // Файловые дескрипторы и File-объекты не сериализуются в JSON.
                 data[storeName] = records.map(track => {
                     const { handle, file, ...rest } = track;
                     return rest;
                 });
+            } else if (storeName === this.stores.settings) {
+                // Исключаем токен и любые другие чувствительные ключи.
+                data[storeName] = records.filter(
+                    r => !SENSITIVE_SETTING_KEYS.has(r.key)
+                );
             } else {
                 data[storeName] = records;
             }
@@ -346,19 +357,27 @@ var Database = class Database {
     }
 
     async importData(data) {
-        if (data.tracks && data.tracks.some(t => t.handle || t.file)) {
-            alert('Внимание: при экспорте были удалены ссылки на файлы. После импорта необходимо заново выбрать папку с музыкой, чтобы восстановить доступ.');
-        }
+        // Ключи settings, которые не импортируем из чужого бэкапа.
+        const SENSITIVE_SETTING_KEYS = new Set([
+            'server_api_token',
+        ]);
+
         for (let storeName in data) {
             if (!data[storeName] || storeName === 'exclusions') continue;
-            if (!this.stores[storeName] && storeName !== this.stores.playlists) continue;
+            if (!this.stores[storeName]) continue;
+
             const tx = this.db.transaction(storeName, 'readwrite');
             const store = tx.objectStore(storeName);
             await new Promise((resolve, reject) => {
                 const clearReq = store.clear();
                 clearReq.onerror = () => reject(clearReq.error);
                 clearReq.onsuccess = () => {
-                    const records = data[storeName];
+                    let records = data[storeName];
+                    if (storeName === this.stores.settings) {
+                        records = records.filter(
+                            r => !SENSITIVE_SETTING_KEYS.has(r.key)
+                        );
+                    }
                     if (records.length === 0) return resolve();
                     let completed = 0;
                     records.forEach(record => {

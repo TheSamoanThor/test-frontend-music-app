@@ -23,7 +23,7 @@ Music Player Local Server.
     ENABLE_GZIP=true
     ENABLE_DOCS=true
 
-    # --- режим Bearer-токена (простой, без ролей) ---
+    # --- режим Bearer-токена (роль listener: чтение/стриминг) ---
     SERVER_API_TOKEN=
 
     # --- режим cookie-сессии с ролями (приоритетнее токена) ---
@@ -357,6 +357,54 @@ def _check_bearer(authorization: Optional[str]) -> bool:
     return authorization.split(" ", 1)[1].strip() == SERVER_API_TOKEN
 
 
+# Отдельный токен только для /api/stream (query-параметр ?token=).
+# Если пусто — используется SERVER_API_TOKEN (менее безопасно: один токен
+# на всё). Рекомендуется задать отдельный STREAM_TOKEN, чтобы утечка
+# query-параметра (логи, история, Referer) не давала доступа к API.
+STREAM_TOKEN = os.getenv("STREAM_TOKEN", "").strip()
+
+
+def _effective_stream_token() -> str:
+    """Токен, которым можно авторизовать /api/stream через ?token=."""
+    return STREAM_TOKEN or SERVER_API_TOKEN
+
+
+def _stream_auth_ok(request: Request) -> bool:
+    """
+    Аутентификация для GET /api/stream.
+
+    Порядок:
+      1) открытый режим (ни cookie-auth, ни токенов) — пускаем;
+      2) cookie-сессия (admin или listener) — пускаем;
+      3) Authorization: Bearer <SERVER_API_TOKEN> — пускаем;
+      4) ?token=<STREAM_TOKEN или SERVER_API_TOKEN> — пускаем.
+
+    <audio> не умеет Authorization, поэтому для стриминга допускается
+    query-токен. Он попадает в access-log — поэтому в Dockerfile
+    рекомендуется --no-access-log, а STREAM_TOKEN — отдельный от
+    SERVER_API_TOKEN.
+    """
+    if not AUTH_COOKIE_ENABLED and not SERVER_API_TOKEN and not STREAM_TOKEN:
+        return True  # открытый режим
+
+    if AUTH_COOKIE_ENABLED:
+        cookie_token = request.cookies.get(AUTH_COOKIE_NAME)
+        if _read_session(cookie_token) is not None:
+            return True
+
+    auth_header = request.headers.get("authorization")
+    if SERVER_API_TOKEN and _check_bearer(auth_header):
+        return True
+
+    eff = _effective_stream_token()
+    if eff:
+        q_token = request.query_params.get("token")
+        if q_token and q_token == eff:
+            return True
+
+    return False
+
+
 def current_session(
     mp_session: Optional[str] = Cookie(default=None, alias=AUTH_COOKIE_NAME),
     authorization: Optional[str] = Header(default=None),
@@ -367,9 +415,10 @@ def current_session(
     Поведение:
     - ни cookie-auth, ни token-auth не настроены — открытый режим,
       возвращаем {'u': 'anonymous', 'r': 'admin'};
-    - настроен только SERVER_API_TOKEN — пускаем при валидном Bearer;
+    - настроен только SERVER_API_TOKEN — пускаем при валидном Bearer
+      с ролью 'listener' (чтение/стриминг, без изменений);
     - настроена cookie-auth — читаем подписанную cookie;
-      Bearer-токен тоже принимается как fallback (роль admin).
+      Bearer-токен тоже принимается как fallback (роль listener).
     """
     cookie_active = AUTH_COOKIE_ENABLED
     token_active = bool(SERVER_API_TOKEN)
@@ -377,9 +426,9 @@ def current_session(
     if not cookie_active and not token_active:
         return {"u": "anonymous", "r": "admin"}
 
-    # Bearer-токен как fallback: даёт права admin
+    # Bearer-токен как fallback: даёт права только listener.
     if token_active and _check_bearer(authorization):
-        return {"u": "token", "r": "admin"}
+        return {"u": "token", "r": "listener"}
 
     if cookie_active:
         return _read_session(mp_session)
@@ -420,13 +469,20 @@ app = FastAPI(
     openapi_url="/openapi.json" if ENABLE_DOCS else None,
 )
 
+# CORS: если среди origin есть '*' или 'null' — credentials выключаем.
+# Браузер запрещает `Access-Control-Allow-Origin: null` вместе с
+# `Access-Control-Allow-Credentials: true`, поэтому для file:// (Origin: null)
+# и для '*' режим с куками невозможен в принципе.
+_cors_has_wildcard = ("*" in CORS_ORIGINS) or ("null" in CORS_ORIGINS)
+
 if CORS_ORIGINS != ["*"]:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=CORS_ORIGINS,
-        allow_credentials=True,
+        allow_credentials=not _cors_has_wildcard,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"],
     )
 else:
     app.add_middleware(
@@ -435,6 +491,7 @@ else:
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"],
     )
 
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=TRUSTED_HOSTS)
@@ -633,7 +690,7 @@ def require_any_auth(
     raise HTTPException(status_code=401, detail="Unauthorized")
 
 
-@app.post("/api/log", dependencies=[Depends(require_any_auth)])
+@app.post("/api/log", dependencies=[Depends(require_admin)])
 def log_event(data: LogIn) -> dict:
     write_log(data.event, data.payload)
     return {"ok": True}
@@ -737,8 +794,12 @@ def get_radio_tracks(tag: Optional[str] = None, limit: int = 20) -> list:
 
 
 # ====================== STREAM ======================
-@app.get("/api/stream/{track_id}", dependencies=[Depends(require_login)])
+@app.get("/api/stream/{track_id}")
 def stream_track(track_id: str, request: Request):
+    # Аутентификация: cookie / Bearer / ?token= (см. _stream_auth_ok).
+    if not _stream_auth_ok(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     conn = get_db()
     row = conn.execute("SELECT path, source FROM tracks WHERE id = ?", (track_id,)).fetchone()
     conn.close()
@@ -786,12 +847,18 @@ def stream_track(track_id: str, request: Request):
                 "Content-Range": f"bytes {start}-{end}/{file_size}",
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(length),
+                "Cache-Control": "no-store",
             },
             media_type=media_type,
         )
 
-    return FileResponse(file_path, media_type=media_type,
-                        headers={"Accept-Ranges": "bytes"})
+    return FileResponse(
+        file_path, media_type=media_type,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 # ====================== UPLOAD / SCAN ======================

@@ -32,12 +32,14 @@ var ServerApi = {
         const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
         try {
             const headers = { ...(options.headers || {}) };
+            
+            // Читаем токен из IndexedDB. Если он есть, шлём как Bearer.
             const token = this._db ? await this._db.getSetting('server_api_token') : null;
             if (token) headers.Authorization = `Bearer ${token}`;
 
             const response = await fetch(this.baseUrl + path, {
                 ...options,
-                credentials: 'include',
+                credentials: 'include', // для куки на продакшене
                 signal: controller.signal,
                 headers,
             });
@@ -52,6 +54,31 @@ var ServerApi = {
             clearTimeout(timeout);
             console.debug(`[ServerApi] ${path} недоступен:`, err.message);
             return null;
+        }
+    },
+
+    /**
+     * Собирает streamUrl с query-токеном, если он сохранён.
+     * Нужен потому, что <audio> не умеет Authorization: Bearer.
+     * Для file://-режима это единственный способ авторизовать стрим.
+     */
+    async _withStreamToken(url) {
+        if (!url) return url;
+        const token = this._db ? await this._db.getSetting('server_api_token') : null;
+        if (!token) {
+            // Нет токена — убираем старый ?token=, если он был
+            try {
+                const u = new URL(url, this.baseUrl);
+                u.searchParams.delete('token');
+                return u.toString();
+            } catch { return url; }
+        }
+        try {
+            const u = new URL(url, this.baseUrl);
+            u.searchParams.set('token', token);  // всегда перезаписываем
+            return u.toString();
+        } catch {
+            return url;
         }
     },
 
@@ -86,25 +113,25 @@ var ServerApi = {
     // ---------- ТРЕКИ ----------
     async getTracks() {
         const res = await this._fetch('/api/tracks');
-        if (res && res.ok && Array.isArray(res.data)) {
-            return res.data.map(t => {
-                const track = { ...t };
-                // stream_url -> streamUrl (абсолютный)
-                if (t.stream_url) {
-                    track.streamUrl = t.stream_url.startsWith('/')
-                        ? this.baseUrl + t.stream_url
-                        : t.stream_url;
-                } else if (t.streamUrl) {
-                    track.streamUrl = t.streamUrl.startsWith('/')
-                        ? this.baseUrl + t.streamUrl
-                        : t.streamUrl;
-                }
-                // archive_id -> archiveId
-                if (t.archive_id && !track.archiveId) track.archiveId = t.archive_id;
-                return track;
-            });
+        if (!(res && res.ok && Array.isArray(res.data))) return [];
+        const tracks = res.data.map(t => {
+            const track = { ...t };
+            if (t.stream_url) {
+                track.streamUrl = t.stream_url.startsWith('/')
+                    ? this.baseUrl + t.stream_url
+                    : t.stream_url;
+            } else if (t.streamUrl) {
+                track.streamUrl = t.streamUrl.startsWith('/')
+                    ? this.baseUrl + t.streamUrl
+                    : t.streamUrl;
+            }
+            if (t.archive_id && !track.archiveId) track.archiveId = t.archive_id;
+            return track;
+        });
+        for (const t of tracks) {
+            if (t.streamUrl) t.streamUrl = await this._withStreamToken(t.streamUrl);
         }
-        return [];
+        return tracks;
     },
 
     async postTrack(track) {
@@ -125,34 +152,48 @@ var ServerApi = {
 
     async searchTracks(query) {
         const res = await this._fetch(`/api/tracks/search?q=${encodeURIComponent(query)}`);
-        if (res && res.ok && Array.isArray(res.data)) {
-            return res.data.map(t => {
-                const track = { ...t };
-                if (t.stream_url) {
-                    track.streamUrl = t.stream_url.startsWith('/') ? this.baseUrl + t.stream_url : t.stream_url;
-                }
-                return track;
-            });
+        if (!(res && res.ok && Array.isArray(res.data))) return [];
+        const tracks = res.data.map(t => {
+            const track = { ...t };
+            if (t.stream_url) {
+                track.streamUrl = t.stream_url.startsWith('/')
+                    ? this.baseUrl + t.stream_url
+                    : t.stream_url;
+            } else if (t.streamUrl) {
+                track.streamUrl = t.streamUrl.startsWith('/')
+                    ? this.baseUrl + t.streamUrl
+                    : t.streamUrl;
+            }
+            return track;
+        });
+        for (const t of tracks) {
+            if (t.streamUrl) t.streamUrl = await this._withStreamToken(t.streamUrl);
         }
-        return [];
+        return tracks;
     },
 
     async getRadioTracks(tag = null, limit = 20) {
         let path = `/api/tracks/radio?limit=${limit}`;
-        if (tag) {
-            path += `&tag=${encodeURIComponent(tag)}`;
-        }
+        if (tag) path += `&tag=${encodeURIComponent(tag)}`;
         const res = await this._fetch(path);
-        if (res && res.ok && Array.isArray(res.data)) {
-            return res.data.map(t => {
-                const track = { ...t };
-                if (t.stream_url) {
-                    track.streamUrl = t.stream_url.startsWith('/') ? this.baseUrl + t.stream_url : t.stream_url;
-                }
-                return track;
-            });
+        if (!(res && res.ok && Array.isArray(res.data))) return [];
+        const tracks = res.data.map(t => {
+            const track = { ...t };
+            if (t.stream_url) {
+                track.streamUrl = t.stream_url.startsWith('/')
+                    ? this.baseUrl + t.stream_url
+                    : t.stream_url;
+            } else if (t.streamUrl) {
+                track.streamUrl = t.streamUrl.startsWith('/')
+                    ? this.baseUrl + t.streamUrl
+                    : t.streamUrl;
+            }
+            return track;
+        });
+        for (const t of tracks) {
+            if (t.streamUrl) t.streamUrl = await this._withStreamToken(t.streamUrl);
         }
-        return [];
+        return tracks;
     },
 
     /** Загрузка файлов (multipart). */

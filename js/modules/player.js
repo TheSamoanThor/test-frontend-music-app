@@ -5,7 +5,7 @@ var Player = class Player {
         this.db = db;
         this.fileHandler = fileHandler;
         this.audio = new Audio();
-        this.audio.crossOrigin = "use-credentials";
+        this.audio.crossOrigin = "anonymous";
         this.currentTrack = null;
         this.queue = [];
         this.currentIndex = -1;
@@ -132,6 +132,19 @@ var Player = class Player {
                     URL.revokeObjectURL(this.currentObjectUrl);
                     this.currentObjectUrl = null;
                 }
+
+                // Для серверных треков пересобираем streamUrl с актуальным
+                // query-токеном (он мог измениться после сохранения трека
+                // в IndexedDB или синхронизации с сервера).
+                if (track.source === 'server' && typeof ServerApi !== 'undefined'
+                    && typeof ServerApi._withStreamToken === 'function') {
+                    try {
+                        track.streamUrl = await ServerApi._withStreamToken(track.streamUrl);
+                    } catch (e) {
+                        console.warn('Не удалось обновить streamUrl с токеном:', e);
+                    }
+                }
+
                 this.currentTrack = track;
                 if (track.id) {
                     this.currentVolumeIntervals = await this.db.getVolumeIntervals(track.id) || [];
@@ -140,19 +153,19 @@ var Player = class Player {
                 }
                 this.activeVolumeInterval = null;
                 this.audio.src = track.streamUrl;
-                
+
                 return new Promise((resolve) => {
                     let resolved = false;
-                    
+
                     const cleanup = () => {
                         this.audio.removeEventListener('canplaythrough', onCanPlay);
                         this.audio.removeEventListener('error', onError);
                     };
 
-                    let timeoutId = setTimeout(() => {
+                    const timeoutId = setTimeout(() => {
                         if (!resolved) {
                             resolved = true;
-                            cleanup(); // Важно: очищаем события при таймауте!
+                            cleanup();
                             console.error(`Timeout loading stream for ${track.name}`);
                             resolve(false);
                         }
